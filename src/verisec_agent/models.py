@@ -98,6 +98,7 @@ class ReviewReport:
     findings: tuple[Finding, ...]
     verification: tuple[VerificationResult, ...]
     bundle_path: str
+    source: dict[str, Any] = field(default_factory=dict)
     summary: dict[str, Any] = field(default_factory=dict)
 
     def to_dict(self) -> dict[str, Any]:

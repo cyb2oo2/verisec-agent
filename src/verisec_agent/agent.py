@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+from typing import Any
 
 from verisec_agent.bundle import BundleWriter
 from verisec_agent.config import ReviewConfig
@@ -15,18 +16,33 @@ class ReviewAgent:
     def __init__(self, config: ReviewConfig) -> None:
         self.config = config
 
-    def review(self, *, diff_path: Path, repo_path: Path, output_dir: Path) -> ReviewReport:
+    def review(
+        self,
+        *,
+        diff_path: Path,
+        repo_path: Path,
+        output_dir: Path,
+        subject: str | None = None,
+        source: dict[str, Any] | None = None,
+    ) -> ReviewReport:
         bundle = BundleWriter(output_dir)
         bundle.prepare()
         trace = TraceLog(output_dir / "trace.jsonl")
+        source_metadata = source or {
+            "kind": "file",
+            "path": str(diff_path),
+        }
         trace.append(
             "review.start",
             "Starting VeriSec review",
+            subject=subject or diff_path.name,
             diff_path=str(diff_path),
             repo_path=str(repo_path),
+            source=source_metadata,
         )
 
         copied_diff = bundle.copy_diff(diff_path)
+        bundle.write_source_metadata(source_metadata)
         diff_text = diff_path.read_text(encoding="utf-8")
         changed_lines = parse_unified_diff(diff_text)
         trace.append("diff.parsed", "Parsed unified diff", changed_lines=len(changed_lines))
@@ -46,12 +62,13 @@ class ReviewAgent:
         summary = _summarize(findings, verification)
 
         report = ReviewReport(
-            subject=diff_path.name,
+            subject=subject or diff_path.name,
             repo_path=str(repo_path),
             diff_path=str(copied_diff),
             findings=findings,
             verification=verification,
             bundle_path=str(output_dir),
+            source=source_metadata,
             summary=summary,
         )
         bundle.write_report(report)

@@ -29,6 +29,7 @@ be added behind the same interfaces.
 Every run writes:
 
 - `inputs/diff.patch`: exact reviewed patch.
+- `inputs/source.json`: local file, GitHub PR, or URL source metadata.
 - `trace.jsonl`: ordered decision and tool events.
 - `tools/*.txt`: stdout and stderr from verification commands.
 - `report.json`: stable machine-readable review report.

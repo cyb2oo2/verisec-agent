@@ -23,6 +23,7 @@ python -m venv .venv
 .\.venv\Scripts\Activate.ps1
 python -m pip install -e ".[dev]"
 python -m verisec_agent review --diff examples/demo.diff --repo . --out verisec-runs/demo
+python -m verisec_agent review --pr 123 --github-repo owner/repo --repo . --out verisec-runs/pr-123
 python -m pytest
 ```
 
@@ -31,6 +32,7 @@ The generated bundle contains:
 - `report.json`: reviewer-facing findings and verification summary.
 - `trace.jsonl`: append-only agent decision and tool events.
 - `inputs/diff.patch`: the reviewed patch input.
+- `inputs/source.json`: diff source metadata for audit and replay.
 - `tools/*.txt`: captured command output for each verification tool.
 
 ## Architecture
