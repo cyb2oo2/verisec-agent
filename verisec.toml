@@ -1,0 +1,15 @@
+[review]
+max_evidence_lines = 12
+min_confidence = 0.35
+
+[[verification.commands]]
+name = "unit-tests"
+command = "{python} -m pytest"
+timeout_seconds = 60
+required = false
+
+[[verification.commands]]
+name = "ruff"
+command = "{python} -m ruff check src tests"
+timeout_seconds = 60
+required = false

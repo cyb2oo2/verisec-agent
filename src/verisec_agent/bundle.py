@@ -1,0 +1,26 @@
+from __future__ import annotations
+
+import shutil
+from pathlib import Path
+
+from verisec_agent.models import ReviewReport
+
+
+class BundleWriter:
+    def __init__(self, bundle_dir: Path) -> None:
+        self.bundle_dir = bundle_dir
+
+    def prepare(self) -> None:
+        self.bundle_dir.mkdir(parents=True, exist_ok=True)
+        (self.bundle_dir / "inputs").mkdir(exist_ok=True)
+        (self.bundle_dir / "tools").mkdir(exist_ok=True)
+
+    def copy_diff(self, diff_path: Path) -> Path:
+        target = self.bundle_dir / "inputs" / "diff.patch"
+        shutil.copyfile(diff_path, target)
+        return target
+
+    def write_report(self, report: ReviewReport) -> Path:
+        target = self.bundle_dir / "report.json"
+        report.write_json(target)
+        return target
