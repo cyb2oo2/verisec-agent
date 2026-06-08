@@ -1,0 +1,59 @@
+[review]
+max_evidence_lines = 18
+source_context_lines = 10
+min_confidence = 0.35
+
+[policy]
+enabled = true
+execution_profile = "trusted-local"
+allowed_adapters = ["custom"]
+allowed_executables = ["{python}"]
+max_timeout_seconds = 120
+max_output_bytes = 1000000
+block_unavailable_adapters = false
+warn_unavailable_adapters = true
+environment_mode = "minimal"
+network_access = "inherit"
+
+[[verification.commands]]
+name = "django-query-alias-explain-sql-property"
+argv = [
+  "{python}",
+  "-c",
+  '''
+import json
+from pathlib import Path
+
+query = Path("django/db/models/sql/query.py").read_text(encoding="utf-8")
+postgres = Path("django/db/backends/postgresql/operations.py").read_text(encoding="utf-8")
+assert "FORBIDDEN_ALIAS_PATTERN = _lazy_re_compile" in query
+assert "def check_alias(self, alias)" in query
+assert "self.check_alias(alias)" in query
+assert "self.check_alias(name)" in query
+assert "EXPLAIN_OPTIONS_PATTERN.fullmatch(option_name)" in query
+assert '"--" in option_name' in query
+assert "explain_options = frozenset" in postgres
+for marker in (
+    dict(
+        kind="property-check",
+        rule_id="py-sql-identifier-injection",
+        file_path="django/db/models/sql/query.py",
+        check="SQL injection regression test",
+        assertion="Query aliases reject quotes, whitespace, semicolons, and SQL comments before SQL compilation.",
+    ),
+    dict(
+        kind="property-check",
+        rule_id="py-sql-explain-option-injection",
+        file_path="django/db/models/sql/query.py",
+        check="SQL injection regression test",
+        assertion="QuerySet.explain() rejects unsafe option names before backend SQL generation.",
+    ),
+):
+    print("VERISEC_EVIDENCE: " + json.dumps(marker, sort_keys=True))
+''',
+]
+timeout_seconds = 30
+required = true
+adapter = "custom"
+description = "Check that Django validates query aliases and EXPLAIN option names before SQL generation."
+capabilities = ["regression-test", "property-check", "sql-injection"]

@@ -1,0 +1,9 @@
+diff --git a/app.py b/app.py
+--- a/app.py
++++ b/app.py
+@@ -0,0 +1,5 @@
++import subprocess
++
++
++def run_user_command(command: str) -> None:
++    subprocess.run(command, shell=True)

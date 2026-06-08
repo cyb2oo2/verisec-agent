@@ -5,6 +5,9 @@ from pathlib import Path
 from typing import Any, Literal
 
 Severity = Literal["info", "low", "medium", "high", "critical"]
+ValidationStatus = Literal["covered", "missing"]
+SourceContextRole = Literal["changed", "context"]
+PolicyStatus = Literal["allowed", "blocked"]
 
 
 @dataclass(frozen=True)
@@ -38,6 +41,30 @@ class EvidenceWindow:
 
 
 @dataclass(frozen=True)
+class SourceContextLine:
+    line_number: int
+    content: str
+    role: SourceContextRole = "context"
+
+
+@dataclass(frozen=True)
+class SourceContext:
+    file_path: str
+    start_line: int
+    end_line: int
+    available: bool
+    rationale: str
+    lines: tuple[SourceContextLine, ...] = ()
+
+    def snippet(self) -> str:
+        rendered: list[str] = []
+        for line in self.lines:
+            marker = ">" if line.role == "changed" else " "
+            rendered.append(f"{marker}{line.line_number}: {line.content}")
+        return "\n".join(rendered)
+
+
+@dataclass(frozen=True)
 class SecurityHypothesis:
     rule_id: str
     title: str
@@ -56,26 +83,59 @@ class VerificationCommand:
     command: str
     timeout_seconds: int = 60
     required: bool = False
+    adapter: str = "custom"
+    description: str = ""
+    capabilities: tuple[str, ...] = ()
+    command_argv: tuple[str, ...] = ()
+
+
+@dataclass(frozen=True)
+class ToolFinding:
+    tool_name: str
+    adapter: str
+    rule_id: str
+    message: str
+    file_path: str
+    start_line: int
+    end_line: int
+    severity: str = "unknown"
+    metadata: dict[str, Any] = field(default_factory=dict)
+
+    def location(self) -> str:
+        return f"{self.file_path}:{self.start_line}-{self.end_line}"
 
 
 @dataclass(frozen=True)
 class VerificationResult:
     name: str
     command: str
+    command_template: str
+    timeout_seconds: int
     required: bool
+    adapter: str
+    description: str
+    capabilities: tuple[str, ...]
     exit_code: int | None
     duration_seconds: float
     timed_out: bool
     stdout_path: str | None
     stderr_path: str | None
+    command_argv: tuple[str, ...] = ()
+    command_argv_template: tuple[str, ...] = ()
+    tool_findings: tuple[ToolFinding, ...] = ()
+    artifact_paths: tuple[str, ...] = ()
+    policy_status: PolicyStatus = "allowed"
+    policy_reasons: tuple[str, ...] = ()
+    policy_warnings: tuple[str, ...] = ()
 
     @property
     def passed(self) -> bool:
-        return self.exit_code == 0 and not self.timed_out
+        return self.policy_status == "allowed" and self.exit_code == 0 and not self.timed_out
 
 
 @dataclass(frozen=True)
 class Finding:
+    finding_id: str
     rule_id: str
     title: str
     severity: Severity
@@ -84,10 +144,25 @@ class Finding:
     start_line: int
     end_line: int
     evidence: str
+    source_context: SourceContext | None
     risk: str
     fix_guidance: str
     recommended_validation: tuple[str, ...]
     false_positive_notes: str
+    base_confidence: float | None = None
+    confidence_notes: str = ""
+
+
+@dataclass(frozen=True)
+class ValidationStep:
+    finding_id: str
+    objective: str
+    recommended_check: str
+    status: ValidationStatus
+    covered_by: tuple[str, ...] = ()
+    tool_evidence: tuple[str, ...] = ()
+    candidate_tools: tuple[str, ...] = ()
+    failure_boundary: str = ""
 
 
 @dataclass(frozen=True)
@@ -97,6 +172,7 @@ class ReviewReport:
     diff_path: str
     findings: tuple[Finding, ...]
     verification: tuple[VerificationResult, ...]
+    validation_plan: tuple[ValidationStep, ...]
     bundle_path: str
     source: dict[str, Any] = field(default_factory=dict)
     summary: dict[str, Any] = field(default_factory=dict)

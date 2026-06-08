@@ -40,9 +40,10 @@ def parse_unified_diff(diff_text: str) -> tuple[ChangedLine, ...]:
                 ChangedLine(current_file, old_line, None, raw_line[1:], change_type="delete")
             )
             old_line += 1
-        elif raw_line.startswith(" "):
+        elif raw_line.startswith(" ") or raw_line == "":
+            content = raw_line[1:] if raw_line.startswith(" ") else ""
             changed.append(
-                ChangedLine(current_file, old_line, new_line, raw_line[1:], change_type="context")
+                ChangedLine(current_file, old_line, new_line, content, change_type="context")
             )
             old_line += 1
             new_line += 1
@@ -54,12 +55,13 @@ def evidence_windows(
     lines: Iterable[ChangedLine],
     *,
     max_lines: int = 12,
+    trigger_change_types: tuple[str, ...] = ("add", "delete"),
 ) -> tuple[EvidenceWindow, ...]:
-    additions = [line for line in lines if line.change_type == "add"]
+    trigger_lines = [line for line in lines if line.change_type in trigger_change_types]
     windows: list[EvidenceWindow] = []
 
-    for line in additions:
-        line_number = line.new_line or 0
+    for line in trigger_lines:
+        line_number = _line_number(line) or 0
         start = max(1, line_number - max_lines // 2)
         end = line_number + max_lines // 2
         same_file = [

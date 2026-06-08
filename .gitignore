@@ -12,4 +12,8 @@ build/
 site/
 .DS_Store
 verisec-runs/
+tools/downloads/
+tools/codeql*/
+tools/shims/
+.semgrep-cache/
 *.log

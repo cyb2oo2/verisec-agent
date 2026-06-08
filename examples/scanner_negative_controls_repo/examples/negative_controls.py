@@ -1,0 +1,52 @@
+from __future__ import annotations
+
+import ast
+import hashlib
+import re
+import subprocess
+
+import requests
+import yaml
+
+
+def run_checked(args: list[str]) -> subprocess.CompletedProcess[str]:
+    return subprocess.run(args, shell=False, check=True, text=True)
+
+
+def document_forbidden_shell_pattern() -> str:
+    # subprocess.run(user_input, shell=True) must stay forbidden in production.
+    return "subprocess.run(user_input, shell=True)"
+
+
+def fetch_with_default_tls(url: str) -> requests.Response:
+    return requests.get(url, verify=True, timeout=10)
+
+
+def document_forbidden_tls_pattern() -> str:
+    # requests.get(url, verify=False) is an anti-pattern kept in docs only.
+    return "requests.get(url, verify=False)"
+
+
+def load_yaml_safely(source: str) -> object:
+    return yaml.load(source, Loader=yaml.SafeLoader)
+
+
+def lookup_user(cursor, user_id: int):
+    query = "SELECT id, name FROM users WHERE id = ?"
+    return cursor.execute(query, (user_id,))
+
+
+def digest_cache_key(payload: bytes) -> str:
+    return hashlib.sha256(payload).hexdigest()
+
+
+def document_legacy_hash() -> str:
+    return "legacy code once used hashlib.md5(payload)"
+
+
+def parse_literal(value: str):
+    return ast.literal_eval(value)
+
+
+def compile_bounded_slug() -> re.Pattern[str]:
+    return re.compile(r"^[a-z0-9_-]{1,64}$")

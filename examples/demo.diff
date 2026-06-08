@@ -1,8 +1,11 @@
-diff --git a/app.py b/app.py
---- a/app.py
-+++ b/app.py
-@@ -1,4 +1,5 @@
+diff --git a/examples/demo_app.py b/examples/demo_app.py
+--- a/examples/demo_app.py
++++ b/examples/demo_app.py
+@@ -1,6 +1,7 @@
+ from __future__ import annotations
+
  import subprocess
- def run_command(user_input):
+
+
+ def run_command(user_input: str):
 +    return subprocess.run(user_input, shell=True)
-     return subprocess.run(["echo", "safe"])

@@ -1,0 +1,60 @@
+{
+  "adapter": "semgrep",
+  "tool_name": "semgrep",
+  "rule_map": {
+    "python.lang.security.audit.subprocess-shell-true": "py-shell-true",
+    "python.lang.security.deserialization.pyyaml-load": "py-unsafe-yaml",
+    "python.requests.security.disabled-cert-validation": "py-tls-verify-disabled",
+    "python.sqlalchemy.security.sql-injection": "py-sql-string-format",
+    "python.lang.security.audit.insecure-hash-algorithms": "weak-hash",
+    "python.lang.security.audit.eval-exec": "py-eval-exec",
+    "python.lang.security.audit.redos": "py-regex-redos-hardening"
+  },
+  "severity_map": {
+    "warning": "medium",
+    "error": "high",
+    "info": "low"
+  },
+  "cases": [
+    {
+      "id": "scanner-negative-shell-false",
+      "results": []
+    },
+    {
+      "id": "scanner-negative-shell-docs",
+      "results": []
+    },
+    {
+      "id": "scanner-negative-tls-verify-true",
+      "results": []
+    },
+    {
+      "id": "scanner-negative-tls-docs",
+      "results": []
+    },
+    {
+      "id": "scanner-negative-yaml-safe-loader",
+      "results": []
+    },
+    {
+      "id": "scanner-negative-parameterized-sql",
+      "results": []
+    },
+    {
+      "id": "scanner-negative-strong-hash",
+      "results": []
+    },
+    {
+      "id": "scanner-negative-weak-hash-docs",
+      "results": []
+    },
+    {
+      "id": "scanner-negative-literal-eval",
+      "results": []
+    },
+    {
+      "id": "scanner-negative-bounded-regex",
+      "results": []
+    }
+  ]
+}

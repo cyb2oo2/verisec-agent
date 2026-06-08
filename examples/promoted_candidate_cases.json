@@ -1,0 +1,220 @@
+{
+  "cases": [
+    {
+      "id": "django-cve-2020-7471-stringagg-sqli",
+      "repo_url": "https://github.com/django/django.git",
+      "base_ref": "27431091d4c03897526f81701397f22fad10250a",
+      "head_ref": "f1ef70b2ca82efb6383b931f193d7d65a28edffb",
+      "diff_url": "https://github.com/django/django/compare/3.0.2...3.0.3.diff",
+      "config": "promoted_django_7471.toml",
+      "metadata": {
+        "project": "django/django",
+        "language": "python",
+        "cve": "CVE-2020-7471",
+        "cwe": "CWE-89",
+        "upstream_commit": "https://github.com/django/django/compare/3.0.2...3.0.3",
+        "advisory_url": "https://www.djangoproject.com/weblog/2020/feb/03/security-releases/",
+        "vulnerability_class": "sql-injection"
+      },
+      "expected_findings": [
+        {
+          "rule_id": "py-sql-delimiter-injection",
+          "file_path": "django/contrib/postgres/aggregates/general.py",
+          "severity": "high",
+          "role": "primary",
+          "notes": "StringAgg delimiter moved from SQL template interpolation into a Value expression."
+        },
+        {
+          "rule_id": "py-sql-delimiter-injection",
+          "file_path": "tests/postgres_tests/test_aggregates.py",
+          "severity": "high",
+          "role": "supporting",
+          "notes": "Regression coverage for crafted delimiter injection."
+        }
+      ],
+      "tags": ["promoted", "oss", "cve", "python", "django", "sql-injection"]
+    },
+    {
+      "id": "django-cve-2022-34265-trunc-extract-sqli",
+      "repo_url": "https://github.com/django/django.git",
+      "base_ref": "08e6073f878264a0c091da0d3db456820252ef6c",
+      "head_ref": "746e88cc634469112b823225c19d75c7362f8ecf",
+      "config": "promoted_django_34265.toml",
+      "metadata": {
+        "project": "django/django",
+        "language": "python",
+        "cve": "CVE-2022-34265",
+        "cwe": "CWE-89",
+        "upstream_commit": "https://github.com/django/django/compare/3.2.13...3.2.14",
+        "advisory_url": "https://www.djangoproject.com/weblog/2022/jul/04/security-releases/",
+        "vulnerability_class": "sql-injection"
+      },
+      "expected_findings": [
+        {
+          "rule_id": "py-sql-lookup-injection",
+          "file_path": "django/db/models/functions/datetime.py",
+          "severity": "high",
+          "role": "primary",
+          "notes": "Trunc(kind) and Extract(lookup_name) validate SQL identifier fragments before SQL generation."
+        }
+      ],
+      "tags": ["promoted", "oss", "cve", "python", "django", "sql-injection"]
+    },
+    {
+      "id": "django-cve-2022-28346-queryset-alias-sqli",
+      "repo_url": "https://github.com/django/django.git",
+      "base_ref": "8e4510b2a97952ce612cd4b9ea6396d6020699f7",
+      "head_ref": "0e35362097e0be379836d176bdf6a5f433d16b44",
+      "diff_url": "https://github.com/django/django/compare/3.2.12...3.2.13.diff",
+      "config": "promoted_django_28346_28347.toml",
+      "metadata": {
+        "project": "django/django",
+        "language": "python",
+        "cve": "CVE-2022-28346",
+        "cwe": "CWE-89",
+        "upstream_commit": "https://github.com/django/django/compare/3.2.12...3.2.13",
+        "advisory_url": "https://www.djangoproject.com/weblog/2022/apr/11/security-releases/",
+        "vulnerability_class": "sql-injection"
+      },
+      "expected_findings": [
+        {
+          "rule_id": "py-sql-identifier-injection",
+          "file_path": "django/db/models/sql/query.py",
+          "severity": "high",
+          "role": "primary",
+          "notes": "Column alias validation blocks SQL fragments in annotate(), aggregate(), and extra()."
+        },
+        {
+          "rule_id": "py-sql-explain-option-injection",
+          "file_path": "django/db/models/sql/query.py",
+          "severity": "high",
+          "role": "supporting",
+          "notes": "The same Django security release also validates EXPLAIN option names before SQL generation."
+        }
+      ],
+      "tags": ["promoted", "oss", "cve", "python", "django", "sql-injection"]
+    },
+    {
+      "id": "django-cve-2022-28347-queryset-explain-sqli",
+      "repo_url": "https://github.com/django/django.git",
+      "base_ref": "8e4510b2a97952ce612cd4b9ea6396d6020699f7",
+      "head_ref": "0e35362097e0be379836d176bdf6a5f433d16b44",
+      "diff_url": "https://github.com/django/django/compare/3.2.12...3.2.13.diff",
+      "config": "promoted_django_28346_28347.toml",
+      "metadata": {
+        "project": "django/django",
+        "language": "python",
+        "cve": "CVE-2022-28347",
+        "cwe": "CWE-89",
+        "upstream_commit": "https://github.com/django/django/compare/3.2.12...3.2.13",
+        "advisory_url": "https://www.djangoproject.com/weblog/2022/apr/11/security-releases/",
+        "vulnerability_class": "sql-injection"
+      },
+      "expected_findings": [
+        {
+          "rule_id": "py-sql-explain-option-injection",
+          "file_path": "django/db/models/sql/query.py",
+          "severity": "high",
+          "role": "primary",
+          "notes": "EXPLAIN option names are allowlisted before being assembled into SQL."
+        },
+        {
+          "rule_id": "py-sql-identifier-injection",
+          "file_path": "django/db/models/sql/query.py",
+          "severity": "high",
+          "role": "supporting",
+          "notes": "The same Django security release also validates query aliases before SQL compilation."
+        }
+      ],
+      "tags": ["promoted", "oss", "cve", "python", "django", "sql-injection"]
+    },
+    {
+      "id": "django-cve-2023-36053-email-url-validator-redos",
+      "repo_url": "https://github.com/django/django.git",
+      "base_ref": "180e2da4c8e3fc7901699899623247bd0267d671",
+      "head_ref": "92e4a1c112212f55ff658687a310a95a5e768795",
+      "diff_url": "https://github.com/django/django/compare/4.2.2...4.2.3.diff",
+      "config": "promoted_django_36053.toml",
+      "metadata": {
+        "project": "django/django",
+        "language": "python",
+        "cve": "CVE-2023-36053",
+        "cwe": "CWE-1333",
+        "upstream_commit": "https://github.com/django/django/compare/4.2.2...4.2.3",
+        "advisory_url": "https://www.djangoproject.com/weblog/2023/jul/03/security-releases/",
+        "vulnerability_class": "redos"
+      },
+      "expected_findings": [
+        {
+          "rule_id": "py-regex-redos-hardening",
+          "file_path": "django/core/validators.py",
+          "severity": "medium",
+          "role": "primary",
+          "notes": "Validator hardening bounds email and URL domain-label processing."
+        }
+      ],
+      "tags": ["promoted", "oss", "cve", "python", "django", "redos", "regex"]
+    },
+    {
+      "id": "django-cve-2021-45115-password-similarity-dos",
+      "repo_url": "https://github.com/django/django.git",
+      "base_ref": "89a6d3870f9a137ab778ca38fda466bc35a91baf",
+      "head_ref": "708a2f3476bfb13640c1def5e0721edbe4a80d2c",
+      "diff_url": "https://github.com/django/django/compare/3.2.10...3.2.11.diff",
+      "config": "promoted_django_45115.toml",
+      "metadata": {
+        "project": "django/django",
+        "language": "python",
+        "cve": "CVE-2021-45115",
+        "cwe": "CWE-400",
+        "upstream_commit": "https://github.com/django/django/compare/3.2.10...3.2.11",
+        "advisory_url": "https://www.djangoproject.com/weblog/2022/jan/04/security-releases/",
+        "vulnerability_class": "algorithmic-complexity-dos"
+      },
+      "expected_findings": [
+        {
+          "rule_id": "py-dos-algorithmic-complexity",
+          "file_path": "django/contrib/auth/password_validation.py",
+          "severity": "medium",
+          "role": "primary",
+          "notes": "The validator avoids expensive similarity checks for extreme length ratios."
+        }
+      ],
+      "tags": ["promoted", "oss", "cve", "python", "django", "dos"]
+    },
+    {
+      "id": "sqlparse-cve-2023-30608-keyword-redos",
+      "repo_url": "https://github.com/andialbrecht/sqlparse.git",
+      "base_ref": "fba15d34a01739c10596d727e20b89762298eea8",
+      "head_ref": "647d1457acf7d88614215841eb15d423df2a1895",
+      "config": "promoted_sqlparse_30608.toml",
+      "metadata": {
+        "project": "andialbrecht/sqlparse",
+        "language": "python",
+        "cve": "CVE-2023-30608",
+        "ghsa": "GHSA-rrm6-wvj7-cwh2",
+        "cwe": "CWE-1333",
+        "upstream_commit": "https://github.com/andialbrecht/sqlparse/compare/0.4.3...0.4.4",
+        "advisory_url": "https://github.com/advisories/GHSA-rrm6-wvj7-cwh2",
+        "vulnerability_class": "redos"
+      },
+      "expected_findings": [
+        {
+          "rule_id": "py-regex-redos-hardening",
+          "file_path": "sqlparse/keywords.py",
+          "severity": "medium",
+          "role": "primary",
+          "notes": "The lexer regex table uses an explicit keyword-processing marker."
+        },
+        {
+          "rule_id": "py-regex-redos-hardening",
+          "file_path": "sqlparse/lexer.py",
+          "severity": "medium",
+          "role": "supporting",
+          "notes": "Lexer dispatch routes keyword markers through lookup instead of regex-callable actions."
+        }
+      ],
+      "tags": ["promoted", "oss", "github-advisory", "python", "sqlparse", "redos", "regex"]
+    }
+  ]
+}

@@ -1,0 +1,73 @@
+{
+  "adapter": "semgrep",
+  "tool_name": "semgrep",
+  "rule_map": {
+    "python.lang.security.deserialization.pyyaml-load": "py-unsafe-yaml"
+  },
+  "severity_map": {
+    "warning": "medium",
+    "error": "high",
+    "info": "low"
+  },
+  "cases": [
+    {
+      "id": "mkdocs-ghsl-2023-208-yaml-safeloader",
+      "results": []
+    },
+    {
+      "id": "pyyaml-pr-74-safe-by-default",
+      "results": [
+        {
+          "check_id": "python.lang.security.deserialization.pyyaml-load",
+          "path": "tests/lib/test_recursive.py",
+          "start": {
+            "line": 22
+          },
+          "end": {
+            "line": 22
+          },
+          "extra": {
+            "message": "Detected yaml.load without an explicit safe loader.",
+            "severity": "WARNING",
+            "metadata": {
+              "cwe": [
+                "CWE-502"
+              ],
+              "technology": [
+                "python",
+                "pyyaml"
+              ]
+            }
+          }
+        },
+        {
+          "check_id": "python.lang.security.deserialization.pyyaml-load",
+          "path": "tests/lib3/test_recursive.py",
+          "start": {
+            "line": 22
+          },
+          "end": {
+            "line": 22
+          },
+          "extra": {
+            "message": "Detected yaml.load without an explicit safe loader.",
+            "severity": "WARNING",
+            "metadata": {
+              "cwe": [
+                "CWE-502"
+              ],
+              "technology": [
+                "python",
+                "pyyaml"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "sqlparse-ghsl-2021-107-redos",
+      "results": []
+    }
+  ]
+}

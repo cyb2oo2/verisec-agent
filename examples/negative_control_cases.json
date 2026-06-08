@@ -1,0 +1,200 @@
+{
+  "cases": [
+    {
+      "id": "negative-shell-false",
+      "diff": "negative_controls/shell_false.diff",
+      "repo": "..",
+      "metadata": {
+        "project": "verisec/negative-controls",
+        "language": "python",
+        "vulnerability_class": "command-injection-near-miss"
+      },
+      "expected_findings": [
+        {
+          "rule_id": "py-shell-true",
+          "file_path": "examples/negative_controls.py",
+          "role": "negative-control",
+          "notes": "shell=False with argv list should not be treated as command injection."
+        }
+      ],
+      "tags": ["negative-control", "python", "command-injection"]
+    },
+    {
+      "id": "negative-shell-docs",
+      "diff": "negative_controls/shell_true_docs.diff",
+      "repo": "..",
+      "metadata": {
+        "project": "verisec/negative-controls",
+        "language": "python",
+        "vulnerability_class": "documented-dangerous-pattern"
+      },
+      "expected_findings": [
+        {
+          "rule_id": "py-shell-true",
+          "file_path": "examples/negative_controls.py",
+          "role": "negative-control",
+          "notes": "Dangerous shell=True appears only in a comment and string literal."
+        }
+      ],
+      "tags": ["negative-control", "python", "docs"]
+    },
+    {
+      "id": "negative-tls-verify-true",
+      "diff": "negative_controls/tls_verify_true.diff",
+      "repo": "..",
+      "metadata": {
+        "project": "verisec/negative-controls",
+        "language": "python",
+        "vulnerability_class": "tls-near-miss"
+      },
+      "expected_findings": [
+        {
+          "rule_id": "py-tls-verify-disabled",
+          "file_path": "examples/negative_controls.py",
+          "role": "negative-control",
+          "notes": "Explicit verify=True should not be reported as TLS verification disabled."
+        }
+      ],
+      "tags": ["negative-control", "python", "tls"]
+    },
+    {
+      "id": "negative-tls-docs",
+      "diff": "negative_controls/tls_verify_false_docs.diff",
+      "repo": "..",
+      "metadata": {
+        "project": "verisec/negative-controls",
+        "language": "python",
+        "vulnerability_class": "documented-dangerous-pattern"
+      },
+      "expected_findings": [
+        {
+          "rule_id": "py-tls-verify-disabled",
+          "file_path": "examples/negative_controls.py",
+          "role": "negative-control",
+          "notes": "verify=False appears only in documentation text."
+        }
+      ],
+      "tags": ["negative-control", "python", "docs", "tls"]
+    },
+    {
+      "id": "negative-yaml-safe-loader",
+      "diff": "negative_controls/yaml_safe_loader.diff",
+      "repo": "..",
+      "metadata": {
+        "project": "verisec/negative-controls",
+        "language": "python",
+        "vulnerability_class": "yaml-safe-loader-near-miss"
+      },
+      "expected_findings": [
+        {
+          "rule_id": "py-yaml-safe-loader",
+          "file_path": "examples/negative_controls.py",
+          "role": "benign",
+          "notes": "SafeLoader use is an accepted hardening signal, not a vulnerability."
+        },
+        {
+          "rule_id": "py-unsafe-yaml",
+          "file_path": "examples/negative_controls.py",
+          "role": "negative-control",
+          "notes": "Explicit SafeLoader must not be classified as unsafe YAML loading."
+        }
+      ],
+      "tags": ["negative-control", "python", "yaml"]
+    },
+    {
+      "id": "negative-parameterized-sql",
+      "diff": "negative_controls/parameterized_sql.diff",
+      "repo": "..",
+      "metadata": {
+        "project": "verisec/negative-controls",
+        "language": "python",
+        "vulnerability_class": "sql-injection-near-miss"
+      },
+      "expected_findings": [
+        {
+          "rule_id": "py-sql-string-format",
+          "file_path": "examples/negative_controls.py",
+          "role": "negative-control",
+          "notes": "Parameterized query should not be treated as SQL string formatting."
+        }
+      ],
+      "tags": ["negative-control", "python", "sql"]
+    },
+    {
+      "id": "negative-strong-hash",
+      "diff": "negative_controls/strong_hash.diff",
+      "repo": "..",
+      "metadata": {
+        "project": "verisec/negative-controls",
+        "language": "python",
+        "vulnerability_class": "crypto-near-miss"
+      },
+      "expected_findings": [
+        {
+          "rule_id": "weak-hash",
+          "file_path": "examples/negative_controls.py",
+          "role": "negative-control",
+          "notes": "SHA-256 cache key should not be classified as weak hash usage."
+        }
+      ],
+      "tags": ["negative-control", "python", "crypto"]
+    },
+    {
+      "id": "negative-weak-hash-docs",
+      "diff": "negative_controls/weak_hash_docs.diff",
+      "repo": "..",
+      "metadata": {
+        "project": "verisec/negative-controls",
+        "language": "python",
+        "vulnerability_class": "documented-dangerous-pattern"
+      },
+      "expected_findings": [
+        {
+          "rule_id": "weak-hash",
+          "file_path": "examples/negative_controls.py",
+          "role": "negative-control",
+          "notes": "hashlib.md5 appears only as documentation text."
+        }
+      ],
+      "tags": ["negative-control", "python", "docs", "crypto"]
+    },
+    {
+      "id": "negative-literal-eval",
+      "diff": "negative_controls/literal_eval.diff",
+      "repo": "..",
+      "metadata": {
+        "project": "verisec/negative-controls",
+        "language": "python",
+        "vulnerability_class": "dynamic-execution-near-miss"
+      },
+      "expected_findings": [
+        {
+          "rule_id": "py-eval-exec",
+          "file_path": "examples/negative_controls.py",
+          "role": "negative-control",
+          "notes": "ast.literal_eval is intentionally outside eval/exec matching."
+        }
+      ],
+      "tags": ["negative-control", "python", "dynamic-execution"]
+    },
+    {
+      "id": "negative-bounded-regex",
+      "diff": "negative_controls/bounded_regex.diff",
+      "repo": "..",
+      "metadata": {
+        "project": "verisec/negative-controls",
+        "language": "python",
+        "vulnerability_class": "redos-near-miss"
+      },
+      "expected_findings": [
+        {
+          "rule_id": "py-regex-redos-hardening",
+          "file_path": "examples/negative_controls.py",
+          "role": "negative-control",
+          "notes": "Bounded slug regex should not be classified as ReDoS hardening or risk."
+        }
+      ],
+      "tags": ["negative-control", "python", "regex"]
+    }
+  ]
+}

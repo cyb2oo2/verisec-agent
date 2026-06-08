@@ -1,0 +1,135 @@
+name: VeriSec Nightly Scanner Drift
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "17 3 * * *"
+
+permissions:
+  contents: write
+  pull-requests: write
+
+concurrency:
+  group: verisec-nightly-promotion
+  cancel-in-progress: false
+
+jobs:
+  nightly-promotion:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - name: Install VeriSec
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e ".[dev]"
+      - name: Bootstrap scanner toolchain
+        run: pwsh -NoProfile -File scripts/bootstrap_scanners.ps1
+      - name: Show tool registry
+        run: python -m verisec_agent tools
+
+      - name: Run live nightly portfolio
+        run: |
+          python -m verisec_agent portfolio \
+            --manifest verisec_portfolio.nightly.json \
+            --out verisec-runs/nightly-portfolio \
+            --policy-profile trusted-ci \
+            --github-step-summary
+      - name: Attest nightly portfolio
+        run: |
+          python -m verisec_agent attest \
+            --index verisec-runs/nightly-portfolio/artifact_index.json \
+            --out verisec-runs/nightly-portfolio-attestation \
+            --github-step-summary
+      - name: Freeze passed nightly scanner baselines
+        run: |
+          python scripts/promote_nightly_artifacts.py \
+            --nightly-dir verisec-runs/nightly-portfolio \
+            --attestation verisec-runs/nightly-portfolio-attestation \
+            --out verisec-runs/nightly-promotion-pre-release
+
+      - name: Run release portfolio after promotion
+        run: |
+          python -m verisec_agent portfolio \
+            --manifest verisec_portfolio.json \
+            --out verisec-runs/release-portfolio-after-promotion \
+            --policy-profile trusted-ci \
+            --github-step-summary
+      - name: Attest release portfolio after promotion
+        run: |
+          python -m verisec_agent attest \
+            --index verisec-runs/release-portfolio-after-promotion/artifact_index.json \
+            --out verisec-runs/release-portfolio-after-promotion-attestation \
+            --github-step-summary
+      - name: Publish promotion benchmark snapshot
+        run: |
+          python scripts/promote_nightly_artifacts.py \
+            --nightly-dir verisec-runs/nightly-portfolio \
+            --attestation verisec-runs/nightly-portfolio-attestation \
+            --release-dir verisec-runs/release-portfolio-after-promotion \
+            --out verisec-runs/nightly-promotion
+
+      - name: Verify promotion invariants
+        run: |
+          python -m pytest tests/test_promote_nightly_artifacts.py tests/test_portfolio_manifests.py
+          python -m ruff check --no-cache scripts tests/test_promote_nightly_artifacts.py tests/test_portfolio_manifests.py
+          git diff --check
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: verisec-nightly-promotion
+          path: |
+            verisec-runs/nightly-portfolio
+            verisec-runs/nightly-portfolio-attestation
+            verisec-runs/nightly-promotion-pre-release
+            verisec-runs/release-portfolio-after-promotion
+            verisec-runs/release-portfolio-after-promotion-attestation
+            verisec-runs/nightly-promotion
+          if-no-files-found: warn
+
+      - name: Create promotion pull request
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          promotion_paths=(
+            examples/baselines
+            docs/release_benchmark_matrix.json
+            docs/RELEASE_BENCHMARK.md
+          )
+          changes="$(git status --porcelain -- "${promotion_paths[@]}")"
+          if [ -z "$changes" ]; then
+            echo "No scanner baseline or benchmark snapshot changes to promote."
+            exit 0
+          fi
+          echo "$changes"
+
+          branch="cyb/verisec-nightly-promotion-${GITHUB_RUN_ID}"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git checkout -b "$branch"
+          git add "${promotion_paths[@]}"
+          git commit -m "Refresh VeriSec scanner baselines"
+          git push origin "$branch"
+
+          body="verisec-runs/nightly-promotion/promotion.md"
+          cat >> "$body" <<'EOF'
+
+          ## CI Evidence
+
+          - Live nightly portfolio passed and was attested.
+          - Frozen scanner baselines were regenerated from the attested nightly run.
+          - Fast release portfolio passed after promotion and was attested.
+          EOF
+          gh pr create \
+            --base main \
+            --head "$branch" \
+            --title "Refresh VeriSec nightly scanner baselines" \
+            --body-file "$body"

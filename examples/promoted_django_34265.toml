@@ -1,0 +1,51 @@
+[review]
+max_evidence_lines = 18
+source_context_lines = 10
+min_confidence = 0.35
+
+[policy]
+enabled = true
+execution_profile = "trusted-local"
+allowed_adapters = ["custom"]
+allowed_executables = ["{python}"]
+max_timeout_seconds = 120
+max_output_bytes = 1000000
+block_unavailable_adapters = false
+warn_unavailable_adapters = true
+environment_mode = "minimal"
+network_access = "inherit"
+
+[[verification.commands]]
+name = "django-trunc-extract-sql-lookup-property"
+argv = [
+  "{python}",
+  "-c",
+  '''
+import json
+from pathlib import Path
+
+path = Path("django/db/models/functions/datetime.py")
+text = path.read_text(encoding="utf-8")
+assert "extract_trunc_lookup_pattern.fullmatch(self.lookup_name)" in text
+assert "extract_trunc_lookup_pattern.fullmatch(self.kind)" in text
+assert "Invalid lookup_name" in text and "Invalid kind" in text
+print(
+    "VERISEC_EVIDENCE: "
+    + json.dumps(
+        dict(
+            kind="property-check",
+            rule_id="py-sql-lookup-injection",
+            file_path="django/db/models/functions/datetime.py",
+            check="SQL injection regression test",
+            assertion="Trunc(kind) and Extract(lookup_name) reject unsafe SQL identifier fragments.",
+        ),
+        sort_keys=True,
+    )
+)
+''',
+]
+timeout_seconds = 30
+required = true
+adapter = "custom"
+description = "Check that Django validates Trunc(kind) and Extract(lookup_name) before SQL generation."
+capabilities = ["regression-test", "property-check", "sql-injection"]

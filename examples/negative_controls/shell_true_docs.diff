@@ -1,0 +1,7 @@
+diff --git a/examples/negative_controls.py b/examples/negative_controls.py
+--- a/examples/negative_controls.py
++++ b/examples/negative_controls.py
+@@ -1,3 +1,6 @@
++def document_forbidden_shell_pattern() -> str:
++    # subprocess.run(user_input, shell=True) must stay forbidden in production.
++    return "subprocess.run(user_input, shell=True)"

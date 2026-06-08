@@ -1,0 +1,19 @@
+{
+  "cases": [
+    {
+      "id": "scanner-smoke-shell-true",
+      "diff": "scanner_smoke.diff",
+      "repo": "scanner_smoke_repo",
+      "expected_rules": ["py-shell-true"],
+      "expected_findings": [
+        {
+          "rule_id": "py-shell-true",
+          "file_path": "app.py",
+          "severity": "high",
+          "role": "primary"
+        }
+      ],
+      "tags": ["scanner-smoke", "python", "command-injection"]
+    }
+  ]
+}

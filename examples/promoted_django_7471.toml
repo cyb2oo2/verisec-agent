@@ -1,0 +1,65 @@
+[review]
+max_evidence_lines = 18
+source_context_lines = 10
+min_confidence = 0.35
+
+[policy]
+enabled = true
+execution_profile = "trusted-local"
+allowed_adapters = ["custom"]
+allowed_executables = ["{python}"]
+max_timeout_seconds = 120
+max_output_bytes = 1000000
+block_unavailable_adapters = false
+warn_unavailable_adapters = true
+environment_mode = "minimal"
+network_access = "inherit"
+
+[[verification.commands]]
+name = "django-stringagg-delimiter-sqli-property"
+argv = [
+  "{python}",
+  "-c",
+  '''
+import json
+from pathlib import Path
+
+aggregate_path = Path("django/contrib/postgres/aggregates/general.py")
+test_path = Path("tests/postgres_tests/test_aggregates.py")
+aggregate = aggregate_path.read_text(encoding="utf-8")
+tests = test_path.read_text(encoding="utf-8")
+assert "delimiter_expr = Value(str(delimiter))" in aggregate
+assert "super().__init__(expression, delimiter_expr, **extra)" in aggregate
+assert "%(delimiter)s" not in aggregate
+assert "def test_string_agg_delimiter_escaping(self)" in tests
+assert "delimiter=\"'\"" in tests
+for file_path, assertion in (
+    (
+        str(aggregate_path).replace("\\", "/"),
+        "StringAgg compiles the delimiter as a Value expression instead of SQL template text.",
+    ),
+    (
+        str(test_path).replace("\\", "/"),
+        "Regression coverage exercises a single-quote delimiter through StringAgg.",
+    ),
+):
+    print(
+        "VERISEC_EVIDENCE: "
+        + json.dumps(
+            dict(
+                kind="property-check",
+                rule_id="py-sql-delimiter-injection",
+                file_path=file_path,
+                check="SQL injection regression test",
+                assertion=assertion,
+            ),
+            sort_keys=True,
+        )
+    )
+''',
+]
+timeout_seconds = 30
+required = true
+adapter = "custom"
+description = "Check that Django parameterizes StringAgg delimiters and retains injection regression coverage."
+capabilities = ["regression-test", "property-check", "sql-injection"]

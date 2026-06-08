@@ -1,0 +1,19 @@
+{
+  "cases": [
+    {
+      "id": "demo-shell-true",
+      "diff": "demo.diff",
+      "repo": "..",
+      "expected_rules": ["py-shell-true"],
+      "expected_findings": [
+        {
+          "rule_id": "py-shell-true",
+          "file_path": "examples/demo_app.py",
+          "severity": "high",
+          "role": "primary"
+        }
+      ],
+      "tags": ["demo", "python", "command-injection"]
+    }
+  ]
+}

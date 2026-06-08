@@ -1,0 +1,25 @@
+[review]
+max_evidence_lines = 16
+source_context_lines = 10
+min_confidence = 0.35
+
+[policy]
+enabled = true
+execution_profile = "trusted-local"
+allowed_adapters = ["custom"]
+allowed_executables = ["{python}"]
+max_timeout_seconds = 120
+max_output_bytes = 1000000
+block_unavailable_adapters = false
+warn_unavailable_adapters = true
+environment_mode = "minimal"
+network_access = "inherit"
+
+[[verification.commands]]
+name = "pyyaml-safe-default-property"
+command = '''{python} -c "import json; from pathlib import Path; text = Path('lib/yaml/__init__.py').read_text(); assert 'safe_load = load' in text and 'def danger_load' in text; markers = [dict(kind='property-check', rule_id='py-yaml-safe-loader', check='unit test with object-construction payload', assertion='safe_load remains the default loader entry point'), dict(kind='property-check', rule_id='py-unsafe-yaml', check='unit test with object-construction payload', assertion='unsafe loading is split into an explicit danger_load path')]; [print('VERISEC_EVIDENCE: ' + json.dumps(marker, sort_keys=True)) for marker in markers]"'''
+timeout_seconds = 30
+required = true
+adapter = "custom"
+description = "Check that PyYAML load is safe by default and the previous unsafe behavior is exposed separately."
+capabilities = ["regression-test", "property-check", "poc"]

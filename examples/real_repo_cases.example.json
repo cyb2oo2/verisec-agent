@@ -1,0 +1,36 @@
+{
+  "cases": [
+    {
+      "id": "project-cve-or-pr-id",
+      "repo_url": "https://github.com/owner/repo.git",
+      "base_ref": "vulnerable-or-pre-fix-commit",
+      "head_ref": "fixed-or-pr-head-commit",
+      "diff_url": "https://github.com/owner/repo/pull/123.diff",
+      "metadata": {
+        "project": "owner/repo",
+        "language": "python",
+        "cve": "CVE-YYYY-NNNN",
+        "cwe": "CWE-78",
+        "upstream_pr": "https://github.com/owner/repo/pull/123",
+        "vulnerability_class": "command-injection"
+      },
+      "expected_findings": [
+        {
+          "rule_id": "py-shell-true",
+          "file_path": "path/to/file.py",
+          "severity": "high",
+          "role": "primary",
+          "notes": "Main reviewer-facing security signal."
+        },
+        {
+          "rule_id": "py-shell-true",
+          "file_path": "tests/test_security.py",
+          "severity": "high",
+          "role": "supporting",
+          "notes": "Regression-test or PoC evidence supporting the primary signal."
+        }
+      ],
+      "tags": ["oss", "cve", "python", "command-injection"]
+    }
+  ]
+}

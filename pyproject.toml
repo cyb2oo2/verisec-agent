@@ -17,6 +17,9 @@ dev = [
     "pytest>=8.0",
     "ruff>=0.6",
 ]
+scanners = [
+    "semgrep==1.163.0",
+]
 
 [project.scripts]
 verisec = "verisec_agent.cli:main"

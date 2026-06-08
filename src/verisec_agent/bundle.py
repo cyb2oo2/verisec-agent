@@ -6,6 +6,7 @@ from pathlib import Path
 from typing import Any
 
 from verisec_agent.models import ReviewReport
+from verisec_agent.reporting import render_markdown_report
 
 
 class BundleWriter:
@@ -25,6 +26,8 @@ class BundleWriter:
     def write_report(self, report: ReviewReport) -> Path:
         target = self.bundle_dir / "report.json"
         report.write_json(target)
+        markdown_target = self.bundle_dir / "report.md"
+        markdown_target.write_text(render_markdown_report(report), encoding="utf-8")
         return target
 
     def write_source_metadata(self, source: dict[str, Any]) -> Path:

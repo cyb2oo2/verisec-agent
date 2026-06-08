@@ -1,0 +1,100 @@
+{
+  "cases": [
+    {
+      "id": "mkdocs-ghsl-2023-208-yaml-safeloader",
+      "repo_url": "https://github.com/mkdocs/mkdocs.git",
+      "base_ref": "dc45916aa1cc4b4d4796dd45656bd1ff60d4ce44",
+      "head_ref": "47e41a9a0ebc097fb45899ca57edc4d005b7b154",
+      "config": "oss_seed_verisec.toml",
+      "metadata": {
+        "project": "mkdocs/mkdocs",
+        "language": "python",
+        "advisory": "GHSL-2023-208",
+        "cwe": "CWE-502",
+        "upstream_pr": "https://github.com/mkdocs/mkdocs/pull/3465",
+        "advisory_url": "https://securitylab.github.com/advisories/GHSL-2023-208_MkDocs/",
+        "vulnerability_class": "unsafe-deserialization"
+      },
+      "expected_findings": [
+        {
+          "rule_id": "py-yaml-safe-loader",
+          "file_path": "mkdocs/theme.py",
+          "severity": "medium",
+          "role": "primary"
+        }
+      ],
+      "tags": ["oss", "github-security-lab", "python", "yaml", "unsafe-deserialization"]
+    },
+    {
+      "id": "pyyaml-pr-74-safe-by-default",
+      "repo_url": "https://github.com/yaml/pyyaml.git",
+      "base_ref": "d856c206fd4bfd71254e0d69e9d5e31bef5d2c0f",
+      "diff_url": "https://github.com/yaml/pyyaml/pull/74.diff",
+      "config": "oss_seed_pyyaml.toml",
+      "metadata": {
+        "project": "yaml/pyyaml",
+        "language": "python",
+        "cve": "CVE-2017-18342",
+        "ghsa": "GHSA-rprw-h62v-c2w7",
+        "cwe": "CWE-502",
+        "upstream_pr": "https://github.com/yaml/pyyaml/pull/74",
+        "advisory_url": "https://github.com/advisories/GHSA-rprw-h62v-c2w7",
+        "vulnerability_class": "unsafe-deserialization"
+      },
+      "expected_findings": [
+        {
+          "rule_id": "py-yaml-safe-loader",
+          "file_path": "lib/yaml/__init__.py",
+          "severity": "medium",
+          "role": "primary"
+        },
+        {
+          "rule_id": "py-yaml-safe-loader",
+          "file_path": "lib3/yaml/__init__.py",
+          "severity": "medium",
+          "role": "supporting"
+        },
+        {
+          "rule_id": "py-unsafe-yaml",
+          "file_path": "tests/lib/test_recursive.py",
+          "severity": "medium",
+          "role": "supporting"
+        },
+        {
+          "rule_id": "py-unsafe-yaml",
+          "file_path": "tests/lib3/test_recursive.py",
+          "severity": "medium",
+          "role": "supporting"
+        }
+      ],
+      "expected_rules": ["py-yaml-safe-loader", "py-unsafe-yaml"],
+      "tags": ["oss", "github-advisory", "python", "yaml", "unsafe-deserialization"]
+    },
+    {
+      "id": "sqlparse-ghsl-2021-107-redos",
+      "repo_url": "https://github.com/andialbrecht/sqlparse.git",
+      "base_ref": "e66046785b816e5c2d22f101f36faefd19c4a771",
+      "head_ref": "8238a9e450ed1524e40cb3a8b0b3c00606903aeb",
+      "config": "oss_seed_sqlparse.toml",
+      "metadata": {
+        "project": "andialbrecht/sqlparse",
+        "language": "python",
+        "cve": "CVE-2021-32839",
+        "ghsa": "GHSA-p5w8-wqhj-9hhf",
+        "cwe": "CWE-1333",
+        "upstream_commit": "https://github.com/andialbrecht/sqlparse/commit/8238a9e450ed1524e40cb3a8b0b3c00606903aeb",
+        "advisory_url": "https://securitylab.github.com/advisories/GHSL-2021-107-andialbrecht-sqlparse/",
+        "vulnerability_class": "redos"
+      },
+      "expected_findings": [
+        {
+          "rule_id": "py-regex-redos-hardening",
+          "file_path": "sqlparse/filters/others.py",
+          "severity": "medium",
+          "role": "primary"
+        }
+      ],
+      "tags": ["oss", "github-security-lab", "python", "redos", "regex"]
+    }
+  ]
+}

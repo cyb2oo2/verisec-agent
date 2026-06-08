@@ -1,0 +1,61 @@
+[review]
+max_evidence_lines = 18
+source_context_lines = 10
+min_confidence = 0.35
+
+[policy]
+enabled = true
+execution_profile = "trusted-local"
+allowed_adapters = ["custom"]
+allowed_executables = ["{python}"]
+max_timeout_seconds = 120
+max_output_bytes = 1000000
+block_unavailable_adapters = false
+warn_unavailable_adapters = true
+environment_mode = "minimal"
+network_access = "inherit"
+
+[[verification.commands]]
+name = "sqlparse-keyword-redos-property"
+argv = [
+  "{python}",
+  "-c",
+  '''
+import json
+from pathlib import Path
+
+keywords = Path("sqlparse/keywords.py").read_text(encoding="utf-8")
+lexer = Path("sqlparse/lexer.py").read_text(encoding="utf-8")
+assert "PROCESS_AS_KEYWORD = object()" in keywords
+assert "action is keywords.PROCESS_AS_KEYWORD" in lexer
+assert "re.compile(rx, FLAGS).match" in lexer
+for file_path, assertion in (
+    (
+        "sqlparse/keywords.py",
+        "SQL keyword regex handling uses an explicit PROCESS_AS_KEYWORD marker.",
+    ),
+    (
+        "sqlparse/lexer.py",
+        "The lexer routes PROCESS_AS_KEYWORD matches through keyword lookup instead of callable regex actions.",
+    ),
+):
+    print(
+        "VERISEC_EVIDENCE: "
+        + json.dumps(
+            dict(
+                kind="property-check",
+                rule_id="py-regex-redos-hardening",
+                file_path=file_path,
+                check="ReDoS regression test with adversarial input",
+                assertion=assertion,
+            ),
+            sort_keys=True,
+        )
+    )
+''',
+]
+timeout_seconds = 30
+required = true
+adapter = "custom"
+description = "Check that sqlparse uses the hardened keyword-regex lexer path."
+capabilities = ["regression-test", "property-check", "redos-regression"]

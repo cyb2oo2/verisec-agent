@@ -1,0 +1,157 @@
+{
+  "dashboard": {
+    "out": "dashboard"
+  },
+  "case_audits": {
+    "enabled": true,
+    "out": "case-audits",
+    "require_verification": true,
+    "fail_on_blocked": true,
+    "fail_on_warnings": false
+  },
+  "case_audit_suites": [
+    {
+      "label": "candidate-cves",
+      "cases": "examples/candidate_cases.json",
+      "out": "case-audits",
+      "require_verification": false,
+      "fail_on_blocked": true,
+      "fail_on_warnings": false
+    }
+  ],
+  "benchmark_matrix": {
+    "out": "benchmark-matrix",
+    "claim_boundaries": [
+      "These metrics describe a curated benchmark of 3 OSS seed cases, 7 promoted CVE cases, and 10 negative controls; they are not estimates of recall or precision on arbitrary real-world repositories.",
+      "Semgrep and CodeQL rows measure patch-overlap against this benchmark's labels for the recorded configurations. A zero recall here means those configurations did not match the labeled changed lines, not that VeriSec universally outperforms either scanner.",
+      "The fast release profile may score captured or reused scanner artifacts for reproducibility. The nightly profile reruns the scanners live to measure tool and query-pack drift."
+    ],
+    "systems": [
+      {
+        "label": "VeriSec Agent",
+        "suite": "oss-seed",
+        "negative_suite": "negative-controls",
+        "notes": "AST/dataflow hypotheses with evidence-backed validation bundles."
+      },
+      {
+        "label": "VeriSec Agent promoted CVEs",
+        "suite": "promoted-cves",
+        "negative_suite": "negative-controls",
+        "notes": "Candidate CVEs promoted into measured eval only after audit and property-check verification."
+      },
+      {
+        "label": "Semgrep baseline",
+        "baseline": "semgrep-oss-seed",
+        "negative_baseline": "semgrep-negative-controls",
+        "notes": "Semgrep-compatible captured JSON artifacts scored with the same expected-finding labels."
+      },
+      {
+        "label": "CodeQL baseline",
+        "baseline": "codeql-oss-seed-live",
+        "negative_baseline": "codeql-negative-controls-live",
+        "notes": "CodeQL Python security SARIF profile scored from frozen reusable scanner artifacts; live CodeQL reruns on cache miss."
+      }
+    ]
+  },
+  "scanner_baselines": [
+    {
+      "label": "semgrep-oss-seed",
+      "adapter": "semgrep",
+      "cases": "examples/oss_seed_cases.json",
+      "results": "examples/baselines/semgrep_oss_seed.json"
+    },
+    {
+      "label": "semgrep-negative-controls",
+      "adapter": "semgrep",
+      "cases": "examples/scanner_negative_control_cases.json",
+      "results": "examples/baselines/semgrep_negative_controls.json"
+    },
+    {
+      "label": "codeql-oss-seed-live",
+      "adapter": "codeql",
+      "cases": "examples/oss_seed_cases.json",
+      "run": true,
+      "reuse_results": true,
+      "reuse_from": "examples/baselines/codeql_oss_seed_frozen.json",
+      "timeout_seconds": 900,
+      "fail_fast": false
+    },
+    {
+      "label": "codeql-negative-controls-live",
+      "adapter": "codeql",
+      "cases": "examples/scanner_negative_control_cases.json",
+      "run": true,
+      "reuse_results": true,
+      "reuse_from": "examples/baselines/codeql_negative_controls_frozen.json",
+      "timeout_seconds": 360,
+      "fail_fast": false
+    }
+  ],
+  "suites": [
+    {
+      "label": "demo",
+      "cases": "examples/eval_cases.json",
+      "config": "examples/demo_verisec.toml",
+      "fail_fast": true,
+      "gate": {
+        "min_validation_coverage": 1.0,
+        "min_tool_evidence_rate": 1.0,
+        "min_avg_confidence": 0.6,
+        "min_accepted_finding_rate": 1.0,
+        "min_primary_precision": 1.0,
+        "min_primary_finding_recall": 1.0,
+        "max_unexpected_finding_rate": 0.0,
+        "max_negative_control_violations": 0,
+        "max_policy_blocked": 0,
+        "max_validation_gap_rate": 0.0
+      }
+    },
+    {
+      "label": "oss-seed",
+      "cases": "examples/oss_seed_cases.json",
+      "fail_fast": true,
+      "gate": {
+        "min_validation_coverage": 1.0,
+        "min_avg_confidence": 0.6,
+        "min_accepted_finding_rate": 1.0,
+        "min_primary_precision": 0.5,
+        "min_primary_finding_recall": 1.0,
+        "min_supporting_evidence_rate": 0.5,
+        "max_unexpected_finding_rate": 0.0,
+        "max_negative_control_violations": 0,
+        "max_policy_blocked": 0,
+        "max_validation_gap_rate": 0.0
+      }
+    },
+    {
+      "label": "promoted-cves",
+      "cases": "examples/promoted_candidate_cases.json",
+      "fail_fast": true,
+      "gate": {
+        "min_validation_coverage": 1.0,
+        "min_tool_evidence_rate": 1.0,
+        "min_avg_confidence": 0.6,
+        "min_accepted_finding_rate": 1.0,
+        "min_primary_precision": 0.5,
+        "min_primary_finding_recall": 1.0,
+        "min_supporting_evidence_rate": 0.25,
+        "max_unexpected_finding_rate": 0.0,
+        "max_negative_control_violations": 0,
+        "max_policy_blocked": 0,
+        "max_validation_gap_rate": 0.0
+      }
+    },
+    {
+      "label": "negative-controls",
+      "cases": "examples/negative_control_cases.json",
+      "fail_fast": true,
+      "gate": {
+        "min_accepted_finding_rate": 1.0,
+        "max_unexpected_finding_rate": 0.0,
+        "max_negative_control_violations": 0,
+        "max_errors": 0,
+        "max_policy_blocked": 0
+      }
+    }
+  ]
+}
