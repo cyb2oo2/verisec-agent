@@ -1,0 +1,116 @@
+{
+  "claim_boundaries": [
+    "These metrics describe a curated benchmark of 3 OSS seed cases, 7 promoted CVE cases, and 10 negative controls; they are not estimates of recall or precision on arbitrary real-world repositories.",
+    "Semgrep and CodeQL rows measure patch-overlap against this benchmark's labels for the recorded configurations. A zero recall here means those configurations did not match the labeled changed lines, not that VeriSec universally outperforms either scanner.",
+    "The fast release profile may score captured or reused scanner artifacts for reproducibility. The nightly profile reruns the scanners live to measure tool and query-pack drift."
+  ],
+  "summary": {
+    "error_system_count": 0,
+    "measured_system_count": 4,
+    "not_run_system_count": 0,
+    "skipped_system_count": 0,
+    "system_count": 4
+  },
+  "systems": [
+    {
+      "baseline": null,
+      "label": "VeriSec Agent",
+      "metrics": {
+        "expected_finding_recall": 1.0,
+        "findings": 8,
+        "negative_control_violations": 0,
+        "negative_controls": 10,
+        "out_of_scope_findings": 0,
+        "policy_blocked_count": 0,
+        "positive_cases": 3,
+        "primary_precision": 0.5,
+        "primary_recall": 1.0,
+        "raw_tool_findings": 8,
+        "tool_evidence_rate": 1.0,
+        "unexpected_rate": 0.0,
+        "validation_coverage": 1.0,
+        "validation_gap_rate": 0.0
+      },
+      "negative_baseline": null,
+      "negative_suite": "negative-controls",
+      "notes": "AST/dataflow hypotheses with evidence-backed validation bundles.",
+      "status": "measured",
+      "suite": "oss-seed"
+    },
+    {
+      "baseline": null,
+      "label": "VeriSec Agent promoted CVEs",
+      "metrics": {
+        "expected_finding_recall": 1.0,
+        "findings": 13,
+        "negative_control_violations": 0,
+        "negative_controls": 10,
+        "out_of_scope_findings": 0,
+        "policy_blocked_count": 0,
+        "positive_cases": 7,
+        "primary_precision": 0.6923,
+        "primary_recall": 1.0,
+        "raw_tool_findings": 13,
+        "tool_evidence_rate": 1.0,
+        "unexpected_rate": 0.0,
+        "validation_coverage": 1.0,
+        "validation_gap_rate": 0.0
+      },
+      "negative_baseline": null,
+      "negative_suite": "negative-controls",
+      "notes": "Candidate CVEs promoted into measured eval only after audit and property-check verification.",
+      "status": "measured",
+      "suite": "promoted-cves"
+    },
+    {
+      "baseline": "semgrep-oss-seed",
+      "label": "Semgrep baseline",
+      "metrics": {
+        "expected_finding_recall": 0.0,
+        "findings": 0,
+        "negative_control_violations": 0,
+        "negative_controls": 10,
+        "out_of_scope_findings": 2,
+        "policy_blocked_count": 0,
+        "positive_cases": 3,
+        "primary_precision": 0.0,
+        "primary_recall": 0.0,
+        "raw_tool_findings": 2,
+        "tool_evidence_rate": 0.0,
+        "unexpected_rate": 0.0,
+        "validation_coverage": 1.0,
+        "validation_gap_rate": 0.0
+      },
+      "negative_baseline": "semgrep-negative-controls",
+      "negative_suite": null,
+      "notes": "Semgrep-compatible captured JSON artifacts scored with the same expected-finding labels.",
+      "status": "measured",
+      "suite": null
+    },
+    {
+      "baseline": "codeql-oss-seed-live",
+      "label": "CodeQL baseline",
+      "metrics": {
+        "expected_finding_recall": 0.0,
+        "findings": 0,
+        "negative_control_violations": 0,
+        "negative_controls": 10,
+        "out_of_scope_findings": 10,
+        "policy_blocked_count": 0,
+        "positive_cases": 3,
+        "primary_precision": 0.0,
+        "primary_recall": 0.0,
+        "raw_tool_findings": 10,
+        "tool_evidence_rate": 0.0,
+        "unexpected_rate": 0.0,
+        "validation_coverage": 1.0,
+        "validation_gap_rate": 0.0
+      },
+      "negative_baseline": "codeql-negative-controls-live",
+      "negative_suite": null,
+      "notes": "CodeQL Python security SARIF profile scored from frozen reusable scanner artifacts; live CodeQL reruns on cache miss.",
+      "status": "measured",
+      "suite": null
+    }
+  ]
+}
