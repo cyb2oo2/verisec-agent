@@ -40,6 +40,14 @@
   Django, sqlparse, and mechanize; these are visible in the portfolio but do not
   count as measured benchmark performance until verification configs and
   expected-finding coverage are added.
+- Frozen holdout pilot with Django CVE-2023-46695 and mechanize 0.4.6, selected
+  at detector commit `d9754d0`, audited as disjoint from 10 measured positive
+  cases, and retained as a failed strict gate with 0.00 primary recall.
+- Partition leakage audit using case IDs, advisory identities, source pairs,
+  diff URLs, and upstream commits.
+- Machine-readable failure analysis that distinguishes semantic rule confusion,
+  rule/location mismatch, undetected labeled locations, unexpected findings,
+  and execution errors.
 - Promoted candidate suite with Django CVE-2020-7471 StringAgg delimiter
   parameterization, Django CVE-2022-34265 SQL lookup hardening, Django
   CVE-2022-28346 alias SQL injection hardening, Django CVE-2022-28347 EXPLAIN

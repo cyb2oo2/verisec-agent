@@ -196,6 +196,7 @@
       "base_ref": "7d0d1ecf958b444ac824363e5e2b149bc2498560",
       "head_ref": "b1b7ef671341b757cde776a9514c6316ddfee36b",
       "diff_url": "https://github.com/django/django/compare/3.2.22...3.2.23.diff",
+      "config": "holdout_django_46695.toml",
       "metadata": {
         "project": "django/django",
         "language": "python",
@@ -214,7 +215,7 @@
           "notes": "UsernameField skips slow Unicode normalization for invalid overlong inputs."
         }
       ],
-      "tags": ["candidate", "oss", "cve", "python", "django", "dos"]
+      "tags": ["candidate", "holdout", "oss", "cve", "python", "django", "dos"]
     },
     {
       "id": "sqlparse-cve-2023-30608-keyword-redos",
@@ -257,6 +258,7 @@
       "base_ref": "618c9473a392447e964db5d5bb564d435b6914ea",
       "head_ref": "7a539f7c54a9d5363b378bbb935671318d483ccb",
       "diff_url": "https://github.com/python-mechanize/mechanize/compare/v0.4.5...v0.4.6.diff",
+      "config": "holdout_mechanize_046.toml",
       "metadata": {
         "project": "python-mechanize/mechanize",
         "language": "python",
@@ -275,7 +277,7 @@
           "notes": "The www-authenticate header parser regex was narrowed to avoid denial of service."
         }
       ],
-      "tags": ["candidate", "oss", "python", "mechanize", "redos", "regex"]
+      "tags": ["candidate", "holdout", "oss", "python", "mechanize", "redos", "regex"]
     }
   ]
 }

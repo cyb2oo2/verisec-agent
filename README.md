@@ -25,6 +25,17 @@ labeled changed lines in this set, not that VeriSec universally outperforms
 Semgrep or CodeQL. The fast profile may reuse captured scanner artifacts, while
 the nightly profile reruns scanners live for drift detection.
 
+The first frozen holdout pilot is intentionally reported separately:
+
+| Split | Cases | Partition Overlap | Primary Recall | Primary Precision | Verified Patches | Gate |
+| --- | ---: | ---: | ---: | ---: | ---: | --- |
+| Holdout pilot at `d9754d0` | 2 | 0/10 reference cases | 0.00 | 0.00 | 2/2 | failed |
+
+The failed gate is the result: one case produced a semantic rule confusion and
+one produced no finding. See [docs/HOLDOUT_PILOT.md](docs/HOLDOUT_PILOT.md) and
+[docs/holdout_pilot.json](docs/holdout_pilot.json). These observed cases will
+not be reused to claim post-hoc detector improvement.
+
 ## Initial scope
 
 - Ingest unified diffs from PRs, patches, or CVE fixes.
@@ -53,6 +64,9 @@ python -m verisec_agent replay --bundle verisec-runs/demo --repo .
 python -m verisec_agent eval --cases examples/eval_cases.json --out verisec-runs/demo-eval --config examples/demo_verisec.toml
 python -m verisec_agent case-audit --cases examples/oss_seed_cases.json --out verisec-runs/oss-seed-audit --require-verification
 python -m verisec_agent case-promote --candidates examples/candidate_cases.json --existing-promoted examples/promoted_candidate_cases.json --out verisec-runs/candidate-promotion-plan
+python -m verisec_agent partition-audit --cases examples/holdout_cases.json --against examples/oss_seed_cases.json --against examples/promoted_candidate_cases.json --out verisec-runs/holdout-partition-audit --fail-on-overlap
+python -m verisec_agent portfolio --manifest verisec_portfolio.holdout.json --out verisec-runs/holdout-pilot --policy-profile trusted-ci
+python -m verisec_agent failure-analysis --evaluation verisec-runs/holdout-pilot/evaluations/holdout-pilot/evaluation.json --out verisec-runs/holdout-failure-analysis
 python -m verisec_agent eval --cases examples/oss_seed_cases.json --out verisec-runs/oss-seed --fail-fast
 python -m verisec_agent eval --cases examples/promoted_candidate_cases.json --out verisec-runs/promoted-cves --fail-fast --resume
 python -m verisec_agent eval --cases examples/negative_control_cases.json --out verisec-runs/negative-controls --fail-fast

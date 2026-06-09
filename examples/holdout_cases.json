@@ -1,0 +1,68 @@
+{
+  "benchmark": {
+    "split": "holdout",
+    "frozen_at": "2026-06-10",
+    "detector_freeze_commit": "d9754d0",
+    "selection_policy": "Audited real OSS security patches that were not present in the measured OSS seed or promoted CVE suites at detector freeze time."
+  },
+  "cases": [
+    {
+      "id": "django-cve-2023-46695-usernamefield-normalization-dos",
+      "repo_url": "https://github.com/django/django.git",
+      "base_ref": "7d0d1ecf958b444ac824363e5e2b149bc2498560",
+      "head_ref": "b1b7ef671341b757cde776a9514c6316ddfee36b",
+      "diff_url": "https://github.com/django/django/compare/3.2.22...3.2.23.diff",
+      "config": "holdout_django_46695.toml",
+      "metadata": {
+        "project": "django/django",
+        "language": "python",
+        "cve": "CVE-2023-46695",
+        "cwe": "CWE-400",
+        "upstream_commit": "https://github.com/django/django/compare/3.2.22...3.2.23",
+        "advisory_url": "https://www.djangoproject.com/weblog/2023/nov/01/security-releases/",
+        "vulnerability_class": "algorithmic-complexity-dos",
+        "benchmark_split": "holdout",
+        "detector_freeze_commit": "d9754d0"
+      },
+      "expected_findings": [
+        {
+          "rule_id": "py-unicode-normalization-dos",
+          "file_path": "django/contrib/auth/forms.py",
+          "severity": "medium",
+          "role": "primary",
+          "notes": "UsernameField returns overlong invalid values before expensive NFKC normalization."
+        }
+      ],
+      "tags": ["holdout", "oss", "cve", "python", "django", "dos", "unicode"]
+    },
+    {
+      "id": "mechanize-0-4-6-www-authenticate-redos",
+      "repo_url": "https://github.com/python-mechanize/mechanize.git",
+      "base_ref": "618c9473a392447e964db5d5bb564d435b6914ea",
+      "head_ref": "7a539f7c54a9d5363b378bbb935671318d483ccb",
+      "diff_url": "https://github.com/python-mechanize/mechanize/compare/v0.4.5...v0.4.6.diff",
+      "config": "holdout_mechanize_046.toml",
+      "metadata": {
+        "project": "python-mechanize/mechanize",
+        "language": "python",
+        "advisory": "mechanize-0.4.6-www-authenticate-redos",
+        "cwe": "CWE-1333",
+        "upstream_commit": "https://github.com/python-mechanize/mechanize/compare/v0.4.5...v0.4.6",
+        "advisory_url": "https://github.com/python-mechanize/mechanize/blob/master/ChangeLog",
+        "vulnerability_class": "redos",
+        "benchmark_split": "holdout",
+        "detector_freeze_commit": "d9754d0"
+      },
+      "expected_findings": [
+        {
+          "rule_id": "py-regex-redos-hardening",
+          "file_path": "mechanize/_urllib2_fork.py",
+          "severity": "medium",
+          "role": "primary",
+          "notes": "The WWW-Authenticate parser regex was anchored and narrowed to avoid denial of service."
+        }
+      ],
+      "tags": ["holdout", "oss", "python", "mechanize", "redos", "regex"]
+    }
+  ]
+}

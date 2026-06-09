@@ -164,6 +164,11 @@ def _case_decision(
         blockers.append("at least one primary expected finding is required")
     if not _has_security_metadata(raw_case):
         blockers.append("CVE/GHSA/advisory/upstream PR metadata is required")
+    tags = {str(tag) for tag in raw_case.get("tags", ())}
+    if "holdout" in tags:
+        blockers.append(
+            "frozen holdout cases cannot be promoted into the measured benchmark"
+        )
 
     if evaluation_case is None:
         if require_evaluation:

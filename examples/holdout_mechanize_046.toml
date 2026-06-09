@@ -1,0 +1,54 @@
+[review]
+max_evidence_lines = 18
+source_context_lines = 10
+min_confidence = 0.35
+
+[policy]
+enabled = true
+execution_profile = "trusted-local"
+allowed_adapters = ["custom"]
+allowed_executables = ["{python}"]
+max_timeout_seconds = 120
+max_output_bytes = 1000000
+block_unavailable_adapters = false
+warn_unavailable_adapters = true
+environment_mode = "minimal"
+network_access = "inherit"
+
+[[verification.commands]]
+name = "mechanize-www-authenticate-redos-property"
+argv = [
+  "{python}",
+  "-c",
+  '''
+import json
+from pathlib import Path
+
+source = Path("mechanize/_urllib2_fork.py").read_text(encoding="utf-8")
+tests = Path("test/test_urllib2.py").read_text(encoding="utf-8")
+assert "rx = re.compile('(?:^|,)'" in source
+assert "'([^ \\t,]+)'" in source
+assert "'realm=([\"\\']?)([^\"\\']*)\\\\2'" in source
+assert "'(?:.*,)*[ \\t]*([^ \\t]+)[ \\t]+'" not in source
+assert 'for bad in (",,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,",):' in tests
+assert "self.assertIsNone(AbstractBasicAuthHandler.rx.search(bad))" in tests
+print(
+    "VERISEC_EVIDENCE: "
+    + json.dumps(
+        dict(
+            kind="property-check",
+            rule_id="py-regex-redos-hardening",
+            file_path="mechanize/_urllib2_fork.py",
+            check="ReDoS regression test with adversarial input",
+            assertion="WWW-Authenticate parsing uses anchored comma alternatives and rejects a long comma-only adversarial header.",
+        ),
+        sort_keys=True,
+    )
+)
+''',
+]
+timeout_seconds = 30
+required = true
+adapter = "custom"
+description = "Check the hardened WWW-Authenticate regex and adversarial regression case."
+capabilities = ["regression-test", "property-check", "redos-regression"]

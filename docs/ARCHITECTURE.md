@@ -31,33 +31,39 @@ VeriSec Agent is organized around an auditable review loop.
     IDs, and verification configs before cases enter measured suites.
 14. Case promotion planning combines intake audit, existing promoted manifests,
     and optional evaluation evidence so candidate CVE/PR cases can only enter
-    measured suites after explicit evidence thresholds pass.
-15. CI gating compares report or evaluation metrics against deployment
+    measured suites after explicit evidence thresholds pass. Frozen holdout
+    cases are permanently blocked from measured promotion.
+15. Partition auditing checks holdout case IDs, advisory identities, source
+    pairs, diff URLs, and upstream commits against reference manifests.
+16. Failure analysis classifies expected misses and unexpected findings into
+    semantic rule confusion, rule/location mismatch, undetected labeled
+    locations, unexpected findings, and execution errors.
+17. CI gating compares report or evaluation metrics against deployment
     thresholds.
-16. Regression dashboards compare multiple evaluation suites and optional gates
+18. Regression dashboards compare multiple evaluation suites and optional gates
     into a release matrix, with baseline regression detection.
-17. Portfolio release gates run the configured evaluation suites, gates, and
+19. Portfolio release gates run the configured evaluation suites, gates, and
     dashboard from one manifest.
-18. Scanner execution can run Semgrep or a custom scanner argv over evaluation
+20. Scanner execution can run Semgrep or a custom scanner argv over evaluation
     cases, materialize real repositories, capture stdout/stderr and JSON/SARIF
     artifacts, and record executable/path/exit/duration provenance. Missing
     scanners produce explicit skipped cases.
-19. Scanner baseline scoring reads captured Semgrep JSON, CodeQL SARIF, or
+21. Scanner baseline scoring reads captured Semgrep JSON, CodeQL SARIF, or
     scanner-run manifests and applies the same expected-finding and
     negative-control labels used by VeriSec evaluations.
-20. Benchmark-matrix rendering aggregates measured OSS/negative-control suites,
+22. Benchmark-matrix rendering aggregates measured OSS/negative-control suites,
     measured scanner baselines, frozen scanner artifacts, live nightly scanner
     runs, and explicit skipped/not-run rows when tools are unavailable.
-21. Artifact integrity indexing records SHA-256 hashes, command metadata,
+23. Artifact integrity indexing records SHA-256 hashes, command metadata,
     runtime environment, and git state for release artifacts.
-22. Artifact attestation recomputes recorded byte sizes and SHA-256 hashes to
+24. Artifact attestation recomputes recorded byte sizes and SHA-256 hashes to
     detect post-run mutation.
-23. PR comment rendering turns the gated result into a stable reviewer-facing
+25. PR comment rendering turns the gated result into a stable reviewer-facing
     Markdown body.
-24. GitHub Actions can review the actual PR diff, upload the rendered comment
+26. GitHub Actions can review the actual PR diff, upload the rendered comment
     body as an artifact, and keep the privileged comment-update job isolated
     from untrusted PR code.
-25. GitHub comment publishing creates or updates the existing marker-bearing PR
+27. GitHub comment publishing creates or updates the existing marker-bearing PR
     comment in trusted bot contexts.
 
 The first version uses deterministic rules plus Python AST and lightweight
@@ -95,14 +101,19 @@ interfaces.
   verification config readiness.
 - `case_promotion.py`: measured-benchmark promotion planner for candidate CVE/PR
   cases, combining audit status, existing promoted manifests, and per-case
-  evaluation evidence thresholds.
+  evaluation evidence thresholds, with frozen holdout cases permanently
+  excluded from measured promotion.
+- `partition_audit.py`: benchmark leakage audit across case identity, advisory,
+  source-pair, diff URL, and upstream-commit fingerprints.
+- `failure_analysis.py`: machine-readable taxonomy for expected misses,
+  unexpected findings, semantic rule confusion, and execution failures.
 - `gate.py`: CI-oriented threshold checks for validation, policy, severity, and
   reviewer-noise metrics, plus Markdown summaries.
 - `dashboard.py`: release-matrix rendering across evaluation suites, optional
   gate status, and baseline-regression comparison.
-- `portfolio.py`: manifest-driven release orchestration for eval, gate, and
-  dashboard runs, optional scanner execution, and measured/not-run/skipped
-  benchmark matrix rows.
+- `portfolio.py`: manifest-driven release orchestration for partition audit,
+  eval, gate, optional failure analysis, dashboard runs, optional scanner
+  execution, and measured/not-run/skipped benchmark matrix rows.
 - `scanner_execution.py`: live scanner baseline harness for Semgrep or custom
   argv commands, with per-case artifact capture and skipped-tool provenance.
 - `scanner_baseline.py`: standalone scanner artifact evaluator for Semgrep JSON
@@ -150,6 +161,11 @@ Every run writes:
 - `case_promotion.json` and `case_promotion.md`: measured-benchmark promotion
   plan when `verisec case-promote` is used, including each candidate's eligible,
   already-promoted, or blocked status and the evidence thresholds used.
+- `partition_audit.json` and `partition_audit.md`: holdout leakage evidence
+  generated directly or by a portfolio `partition_audits` entry.
+- `failure_analysis.json` and `failure_analysis.md`: classified expected misses
+  and unexpected findings when `verisec failure-analysis` is used or a
+  portfolio suite enables `failure_analysis`.
 - `gate.json` and `gate.md`: pass/fail gate result when `verisec gate` is used,
   including reviewer-noise thresholds such as accepted finding rate, primary
   precision, unexpected finding rate, and negative-control violations.
@@ -171,8 +187,9 @@ Every run writes:
   scanner baseline scoring outputs when `verisec portfolio` includes scanner
   baselines.
 - `artifact_index.json` and `artifact_index.md`: release artifact integrity
-  index with hashes for the manifest, portfolio, case audits, scanner
-  baselines, benchmark matrix, dashboard, evaluation, and gate outputs.
+  index with hashes for the manifest, portfolio, partition and case audits,
+  failure analysis, scanner baselines, benchmark matrix, dashboard, evaluation,
+  and gate outputs.
 - `attestation.json` and `attestation.md`: artifact-index verification results
   when `verisec attest` is used.
 - `*-pr-comment.md`: PR-ready Markdown body when `verisec pr-comment` is used.

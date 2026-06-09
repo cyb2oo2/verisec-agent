@@ -11,8 +11,10 @@ from typing import Any
 from verisec_agent.case_audit import run_case_audit
 from verisec_agent.dashboard import LabeledPath, run_dashboard
 from verisec_agent.evaluation import run_evaluation
+from verisec_agent.failure_analysis import run_failure_analysis
 from verisec_agent.gate import GateThresholds, run_gate
 from verisec_agent.integrity import ArtifactSpec, write_artifact_index
+from verisec_agent.partition_audit import run_partition_audit
 from verisec_agent.scanner_baseline import run_scanner_baseline
 from verisec_agent.scanner_execution import run_scanner_execution
 
@@ -29,6 +31,7 @@ CASE_AUDIT_CONFIG_KEYS = {
     "fail_on_warnings",
 }
 CASE_AUDIT_SUITE_KEYS = CASE_AUDIT_CONFIG_KEYS | {"label", "cases"}
+PARTITION_AUDIT_KEYS = {"label", "cases", "against", "out", "fail_on_overlap"}
 
 
 def run_portfolio(
@@ -56,7 +59,24 @@ def run_portfolio(
     output_dir.mkdir(parents=True, exist_ok=True)
     suite_results = []
     standalone_case_audits: list[dict[str, Any]] = []
+    partition_audits: list[dict[str, Any]] = []
     failures: list[str] = []
+
+    raw_partition_audits = manifest.get("partition_audits", [])
+    if not isinstance(raw_partition_audits, list):
+        raise PortfolioError("Portfolio partition_audits must be a list when provided.")
+    for raw_partition_audit in raw_partition_audits:
+        audit = _run_partition_audit_suite(
+            raw_partition_audit,
+            base_dir=base_dir,
+            output_dir=output_dir,
+        )
+        partition_audits.append(audit)
+        if audit["fail_on_overlap"] and not audit["passed"]:
+            failures.append(
+                f"{audit['label']}: partition overlap detected "
+                f"({audit['summary']['overlap_count']} pair(s))"
+            )
 
     for raw_suite in raw_suites:
         suite_result = _run_suite(
@@ -159,6 +179,7 @@ def run_portfolio(
         ]
         + standalone_case_audits,
         "case_audit_suites": standalone_case_audits,
+        "partition_audits": partition_audits,
         "scanner_baselines": scanner_baseline_results,
         "failures": failures,
     }
@@ -179,6 +200,7 @@ def run_portfolio(
                 benchmark_output=benchmark_output if benchmark_matrix is not None else None,
                 suites=suite_results,
                 case_audits=standalone_case_audits,
+                partition_audits=partition_audits,
                 scanner_baselines=scanner_baseline_results,
             ),
             manifest_path=manifest_path,
@@ -208,6 +230,11 @@ def render_portfolio_markdown(result: dict[str, Any]) -> str:
     audit_warning_count = sum(
         int(audit["summary"].get("warning_count", 0)) for audit in case_audits
     )
+    partition_audits = result.get("partition_audits", ())
+    partition_overlap_count = sum(
+        int(audit["summary"].get("overlap_count", 0))
+        for audit in partition_audits
+    )
     lines = [
         f"# VeriSec Portfolio: {status}",
         "",
@@ -220,6 +247,10 @@ def render_portfolio_markdown(result: dict[str, Any]) -> str:
         (
             f"- Case audits: {len(case_audits)} "
             f"({audit_blocked_count} blocked, {audit_warning_count} warnings)"
+        ),
+        (
+            f"- Partition audits: {len(partition_audits)} "
+            f"({partition_overlap_count} overlap pairs)"
         ),
         f"- Scanner baselines: {len(result.get('scanner_baselines', ()))}",
         f"- Dashboard: `{result['dashboard_path']}`",
@@ -256,6 +287,27 @@ def render_portfolio_markdown(result: dict[str, Any]) -> str:
                 f"{summary.get('blocked_count', 0)} | "
                 f"{summary.get('warning_count', 0)} | "
                 f"{summary.get('verification_ready_count', 0)} | "
+                f"`{audit['path']}` |"
+            )
+    if partition_audits:
+        lines.extend(
+            [
+                "",
+                "## Partition Audits",
+                "",
+                "| Audit | Status | Cases | Reference Cases | Overlaps | Output |",
+                "| --- | --- | ---: | ---: | ---: | --- |",
+            ]
+        )
+        for audit in partition_audits:
+            summary = audit["summary"]
+            lines.append(
+                "| "
+                f"{audit['label']} | "
+                f"{'passed' if audit['passed'] else 'failed'} | "
+                f"{summary['case_count']} | "
+                f"{summary['reference_case_count']} | "
+                f"{summary['overlap_count']} | "
                 f"`{audit['path']}` |"
             )
         lines.append("")
@@ -389,6 +441,23 @@ def _run_suite(
         )
     except Exception as exc:
         raise PortfolioError(f"Suite {label} gate failed: {exc}") from exc
+    failure_analysis_path = None
+    failure_analysis_summary = None
+    if bool(raw_suite.get("failure_analysis", False)):
+        failure_analysis_dir = output_dir / "failure-analysis" / safe_label
+        try:
+            failure_analysis = run_failure_analysis(
+                evaluation_path=evaluation_dir / "evaluation.json",
+                output_dir=failure_analysis_dir,
+            )
+        except Exception as exc:
+            raise PortfolioError(
+                f"Suite {label} failure analysis failed: {exc}"
+            ) from exc
+        failure_analysis_path = str(
+            failure_analysis_dir / "failure_analysis.json"
+        )
+        failure_analysis_summary = failure_analysis["summary"]
     summary = evaluation["summary"]
     return {
         "label": label,
@@ -399,6 +468,8 @@ def _run_suite(
         "gate_failures": gate["failures"],
         "case_audit": case_audit,
         "case_audit_failures": case_audit_failures,
+        "failure_analysis_path": failure_analysis_path,
+        "failure_analysis_summary": failure_analysis_summary,
         "metrics": {
             "case_count": summary.get("case_count", 0),
             "finding_count": summary.get("finding_count", 0),
@@ -477,6 +548,58 @@ def _run_standalone_case_audit_suite(
         safe_label=_safe_label(label),
         config=config,
     )
+
+
+def _run_partition_audit_suite(
+    raw_audit: dict[str, Any],
+    *,
+    base_dir: Path,
+    output_dir: Path,
+) -> dict[str, Any]:
+    if not isinstance(raw_audit, dict):
+        raise PortfolioError("Each portfolio partition_audits entry must be an object.")
+    unknown = sorted(set(raw_audit) - PARTITION_AUDIT_KEYS)
+    if unknown:
+        raise PortfolioError(
+            "Unknown partition_audits setting(s): "
+            + ", ".join(str(item) for item in unknown)
+        )
+    label = str(raw_audit.get("label") or "").strip()
+    if not label:
+        raise PortfolioError("Each portfolio partition_audits entry needs a label.")
+    cases_path = _resolve_required_path(base_dir, raw_audit, "cases")
+    raw_against = raw_audit.get("against")
+    if not isinstance(raw_against, list) or not raw_against:
+        raise PortfolioError(
+            f"Portfolio partition audit '{label}' needs a non-empty against list."
+        )
+    reference_paths = tuple(
+        _resolve_required_value_path(base_dir, value, label=label)
+        for value in raw_against
+    )
+    audit_root = Path(str(raw_audit.get("out") or "partition-audits"))
+    if not audit_root.is_absolute():
+        audit_root = output_dir / audit_root
+    audit_dir = audit_root / _safe_label(label)
+    try:
+        audit = run_partition_audit(
+            cases_path=cases_path,
+            reference_paths=reference_paths,
+            output_dir=audit_dir,
+        )
+    except Exception as exc:
+        raise PortfolioError(f"Partition audit {label} failed: {exc}") from exc
+    return {
+        "label": label,
+        "cases_path": str(cases_path),
+        "reference_paths": tuple(str(path) for path in reference_paths),
+        "path": str(audit_dir / "partition_audit.json"),
+        "markdown_path": str(audit_dir / "partition_audit.md"),
+        "passed": bool(audit["passed"]),
+        "fail_on_overlap": bool(raw_audit.get("fail_on_overlap", True)),
+        "summary": audit["summary"],
+        "overlaps": audit["overlaps"],
+    }
 
 
 def _run_case_audit_with_config(
@@ -720,6 +843,7 @@ def _portfolio_artifacts(
     benchmark_output: Path | None,
     suites: list[dict[str, Any]],
     case_audits: list[dict[str, Any]],
+    partition_audits: list[dict[str, Any]],
     scanner_baselines: list[dict[str, Any]],
 ) -> tuple[ArtifactSpec, ...]:
     artifacts = [
@@ -759,8 +883,41 @@ def _portfolio_artifacts(
                 ArtifactSpec(label, "gate-markdown", gate_path.with_suffix(".md")),
             ]
         )
+        failure_analysis_path = suite.get("failure_analysis_path")
+        if failure_analysis_path:
+            analysis_path = Path(str(failure_analysis_path))
+            artifacts.extend(
+                [
+                    ArtifactSpec(
+                        label,
+                        "failure-analysis-json",
+                        analysis_path,
+                    ),
+                    ArtifactSpec(
+                        label,
+                        "failure-analysis-markdown",
+                        analysis_path.with_suffix(".md"),
+                    ),
+                ]
+            )
     for audit in case_audits:
         artifacts.extend(_case_audit_artifacts(label=str(audit["label"]), audit=audit))
+    for audit in partition_audits:
+        audit_path = Path(str(audit["path"]))
+        artifacts.extend(
+            [
+                ArtifactSpec(
+                    str(audit["label"]),
+                    "partition-audit-json",
+                    audit_path,
+                ),
+                ArtifactSpec(
+                    str(audit["label"]),
+                    "partition-audit-markdown",
+                    audit_path.with_suffix(".md"),
+                ),
+            ]
+        )
     for baseline in scanner_baselines:
         label = str(baseline["label"])
         baseline_path = Path(str(baseline["baseline_path"]))
@@ -806,6 +963,15 @@ def _resolve_required_path(base_dir: Path, item: dict[str, Any], key: str) -> Pa
     assert path is not None
     if not path.exists():
         raise PortfolioError(f"Portfolio path does not exist: {path}")
+    return path
+
+
+def _resolve_required_value_path(base_dir: Path, value: Any, *, label: str) -> Path:
+    path = _resolve_optional_path(base_dir, value)
+    if path is None or not path.exists():
+        raise PortfolioError(
+            f"Portfolio partition audit '{label}' path does not exist: {value}"
+        )
     return path
 
 

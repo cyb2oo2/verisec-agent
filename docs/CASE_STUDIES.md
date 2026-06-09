@@ -268,6 +268,24 @@ Current local portfolio result:
 - Nightly scanner mode: `verisec_portfolio.nightly.json` reruns Semgrep and
   CodeQL live against the OSS seed suite and isolated scanner negative controls.
 
+## Frozen Holdout Pilot
+
+The first holdout pilot freezes two previously unpromoted cases at detector
+commit `d9754d0`: Django CVE-2023-46695 and mechanize 0.4.6. A partition audit
+found zero overlap pairs against the 3-case OSS seed and 7-case promoted CVE
+suites. Both patch-specific property checks passed.
+
+The strict detector gate failed: primary recall and primary precision were
+0.00. Django produced one unexpected `py-regex-redos-hardening` finding at the
+correct Unicode-normalization patch location, classified as
+`semantic-rule-confusion`. The mechanize ReDoS patch produced no finding,
+classified as `undetected-labeled-location`. The failed portfolio still
+produced 17 artifacts, all of which passed attestation.
+
+These cases are now observed and are not eligible for a post-hoc improvement
+claim. Detector changes motivated by them must be measured on a new untouched
+partition. See `docs/HOLDOUT_PILOT.md`.
+
 Run it with:
 
 ```powershell

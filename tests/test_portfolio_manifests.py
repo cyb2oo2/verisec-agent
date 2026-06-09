@@ -1,6 +1,8 @@
 import json
 from pathlib import Path
 
+from verisec_agent.partition_audit import run_partition_audit
+
 ROOT = Path(__file__).resolve().parents[1]
 
 
@@ -55,6 +57,36 @@ def test_release_semgrep_negative_baseline_matches_scanner_controls() -> None:
     baseline_cases = _case_ids(baseline)
 
     assert baseline_cases == scanner_cases
+
+
+def test_holdout_portfolio_is_frozen_and_disjoint() -> None:
+    manifest = _load_manifest("verisec_portfolio.holdout.json")
+    holdout = _load_manifest("examples/holdout_cases.json")
+    benchmark = holdout["benchmark"]
+    assert isinstance(benchmark, dict)
+    assert benchmark["split"] == "holdout"
+    assert benchmark["detector_freeze_commit"] == "d9754d0"
+
+    suites = manifest["suites"]
+    assert isinstance(suites, list)
+    assert suites[0]["failure_analysis"] is True
+    cases = holdout["cases"]
+    assert isinstance(cases, list)
+    assert all("holdout" in case["tags"] for case in cases)
+    assert all(
+        case["metadata"]["detector_freeze_commit"] == "d9754d0"
+        for case in cases
+    )
+
+    result = run_partition_audit(
+        cases_path=ROOT / "examples" / "holdout_cases.json",
+        reference_paths=(
+            ROOT / "examples" / "oss_seed_cases.json",
+            ROOT / "examples" / "promoted_candidate_cases.json",
+        ),
+    )
+    assert result["passed"] is True
+    assert result["summary"]["overlap_count"] == 0
 
 
 def _load_manifest(name: str) -> dict[str, object]:

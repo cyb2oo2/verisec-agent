@@ -1,0 +1,41 @@
+{
+  "attestation": {
+    "artifact_count": 17,
+    "failure_count": 0,
+    "passed": true
+  },
+  "benchmark": {
+    "case_count": 2,
+    "detector_freeze_commit": "d9754d0",
+    "frozen_at": "2026-06-10",
+    "split": "holdout"
+  },
+  "evaluation": {
+    "accepted_finding_rate": 0.0,
+    "finding_count": 1,
+    "primary_finding_recall": 0.0,
+    "primary_precision": 0.0,
+    "unexpected_finding_rate": 1.0,
+    "verification_count": 2,
+    "verification_passed": 2
+  },
+  "failure_analysis": {
+    "case_failure_count": 2,
+    "failure_count": 2,
+    "taxonomy": {
+      "semantic-rule-confusion": 1,
+      "undetected-labeled-location": 1
+    },
+    "verified_patch_failure_count": 2
+  },
+  "gate": {
+    "failure_count": 8,
+    "passed": false
+  },
+  "partition_audit": {
+    "overlap_count": 0,
+    "passed": true,
+    "reference_case_count": 10,
+    "reference_manifest_count": 2
+  }
+}

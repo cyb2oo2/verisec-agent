@@ -12,10 +12,12 @@ from verisec_agent.case_promotion import CasePromotionError, plan_case_promotion
 from verisec_agent.config import load_config
 from verisec_agent.dashboard import DashboardError, parse_labeled_path, run_dashboard
 from verisec_agent.evaluation import EvaluationError, run_evaluation
+from verisec_agent.failure_analysis import FailureAnalysisError, run_failure_analysis
 from verisec_agent.gate import GateError, GateThresholds, run_gate
 from verisec_agent.github_comment import GitHubCommentError, publish_pr_comment
 from verisec_agent.inputs import DiffInputError, resolve_diff_input
 from verisec_agent.integrity import IntegrityError, attest_artifact_index
+from verisec_agent.partition_audit import PartitionAuditError, run_partition_audit
 from verisec_agent.policy import POLICY_PROFILES
 from verisec_agent.portfolio import PortfolioError, run_portfolio
 from verisec_agent.pr_comment import PullRequestCommentError, write_pr_comment
@@ -128,6 +130,34 @@ def build_parser() -> argparse.ArgumentParser:
     case_promote.add_argument("--min-primary-finding-recall", default=1.0, type=float)
     case_promote.add_argument("--min-expected-finding-recall", default=1.0, type=float)
     case_promote.add_argument("--json", action="store_true", help="Print full JSON promotion plan")
+
+    partition_audit = subparsers.add_parser(
+        "partition-audit",
+        help="Check a benchmark partition for leakage against reference manifests",
+    )
+    partition_audit.add_argument("--cases", required=True, type=Path)
+    partition_audit.add_argument(
+        "--against",
+        action="append",
+        required=True,
+        type=Path,
+        help="Reference case manifest; may be repeated",
+    )
+    partition_audit.add_argument("--out", type=Path, help="Optional audit output dir")
+    partition_audit.add_argument(
+        "--fail-on-overlap",
+        action="store_true",
+        help="Exit non-zero when any case overlaps a reference manifest",
+    )
+    partition_audit.add_argument("--json", action="store_true", help="Print full JSON result")
+
+    failure_analysis = subparsers.add_parser(
+        "failure-analysis",
+        help="Classify missed and unexpected findings in an evaluation artifact",
+    )
+    failure_analysis.add_argument("--evaluation", required=True, type=Path)
+    failure_analysis.add_argument("--out", type=Path, help="Optional analysis output dir")
+    failure_analysis.add_argument("--json", action="store_true", help="Print full JSON result")
 
     scanner_baseline = subparsers.add_parser(
         "scanner-baseline",
@@ -472,6 +502,50 @@ def main(argv: list[str] | None = None) -> None:
             )
             if args.out:
                 print(f"Promotion plan: {args.out.resolve()}")
+
+    if args.command == "partition-audit":
+        try:
+            result = run_partition_audit(
+                cases_path=args.cases.resolve(),
+                reference_paths=tuple(path.resolve() for path in args.against),
+                output_dir=args.out.resolve() if args.out else None,
+            )
+        except PartitionAuditError as exc:
+            parser.error(str(exc))
+        if args.json:
+            print(json.dumps(result, indent=2, sort_keys=True))
+        else:
+            summary = result["summary"]
+            status = "passed" if result["passed"] else "failed"
+            print(
+                "VeriSec partition audit "
+                f"{status}: {summary['case_count']} case(s), "
+                f"{summary['overlap_count']} overlap pair(s)."
+            )
+            if args.out:
+                print(f"Partition audit: {args.out.resolve()}")
+        if args.fail_on_overlap and not result["passed"]:
+            raise SystemExit(1)
+
+    if args.command == "failure-analysis":
+        try:
+            result = run_failure_analysis(
+                evaluation_path=args.evaluation.resolve(),
+                output_dir=args.out.resolve() if args.out else None,
+            )
+        except FailureAnalysisError as exc:
+            parser.error(str(exc))
+        if args.json:
+            print(json.dumps(result, indent=2, sort_keys=True))
+        else:
+            summary = result["summary"]
+            print(
+                "VeriSec failure analysis complete: "
+                f"{summary['case_failure_count']}/{summary['case_count']} case(s), "
+                f"{summary['failure_count']} classified failure(s)."
+            )
+            if args.out:
+                print(f"Failure analysis: {args.out.resolve()}")
 
     if args.command == "scanner-baseline":
         try:

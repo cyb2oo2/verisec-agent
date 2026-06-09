@@ -113,6 +113,26 @@ def test_plan_case_promotions_blocks_missing_config_and_tracks_existing(
     assert "evaluation evidence is required" in blockers
 
 
+def test_plan_case_promotions_never_promotes_frozen_holdout(
+    tmp_path: Path,
+) -> None:
+    candidates_path = _write_candidate_manifest(tmp_path, include_config=True)
+    payload = _load_json(candidates_path)
+    payload["cases"][0]["tags"].append("holdout")
+    _write_json(candidates_path, payload)
+
+    result = plan_case_promotions(
+        candidates_path=candidates_path,
+        require_evaluation=False,
+    )
+
+    assert result["summary"]["blocked_count"] == 1
+    assert (
+        "frozen holdout cases cannot be promoted into the measured benchmark"
+        in result["cases"][0]["blockers"]
+    )
+
+
 def _write_candidate_manifest(tmp_path: Path, *, include_config: bool) -> Path:
     repo_path = tmp_path / "repo"
     repo_path.mkdir()
