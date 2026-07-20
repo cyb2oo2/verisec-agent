@@ -1,0 +1,183 @@
+# Development Log
+
+Append-only record of decisions and their rationale. **Never rewrite or delete an entry** — if a
+decision is superseded, add a new entry that references the old one and mark the old one superseded.
+
+**Scope boundary:** this file records *why* a choice was made. [CHANGELOG.md](CHANGELOG.md) records
+*what changed for users*. A decision with no user-visible effect belongs only here. Never duplicate
+content between the two.
+
+**Format:** newest first.
+
+```markdown
+## D-NNN — Short title
+**Date:** YYYY-MM-DD · **Status:** accepted | superseded by D-NNN
+**Context:** what forced a choice
+**Decision:** what was chosen
+**Alternatives:** what was rejected and why
+**Consequences:** what this constrains going forward
+```
+
+Append when you make a choice a future change could accidentally undo. Skip trivia that is obvious
+from the code.
+
+---
+
+## D-007 — Skills are canonical in `.ai/`; `.claude/` holds dispatch stubs
+**Date:** 2026-07-21 · **Status:** accepted
+
+**Context:** The layer needed to serve Cursor and Grok Build alongside Claude Code. Claude Code
+discovers skills only under `.claude/skills/*/SKILL.md` and dispatches on YAML frontmatter, so the
+two tool families cannot read the same path by default.
+
+**Decision:** `.ai/skills/<name>.md` holds the canonical instructions. `.claude/skills/<name>/SKILL.md`
+retains only its frontmatter — which Claude Code needs to know *when* to trigger — with a body that
+directs the agent to read the canonical file. Added `.ai/prompts/` for tools with no auto-dispatch,
+and `.ai/README.md` describing per-tool wiring. No project knowledge lives in `.ai/`; it points at
+`AI_CONTEXT.md` and `CLAUDE.md`.
+
+**Alternatives:** (a) Copy the skills into both trees — rejected, two copies of the same checklist
+drift, and the drift is silent because both remain individually valid. (b) Symlink `.claude/skills`
+to `.ai/skills` — rejected, Windows symlinks need Developer Mode or elevation and git portability
+is poor; this repo is developed on Windows. (c) Make `.claude/` canonical and have `.ai/` point back
+— rejected, `.ai/` is the tool-neutral surface, so vendor-neutral content should not live under a
+vendor directory. (d) Keep prompts out entirely — rejected, Cursor and Grok have no skill
+auto-selection, so a pasted prompt *is* their dispatch mechanism.
+
+**Consequences:** Skill edits must go to `.ai/skills/` only; a stub containing instructions means
+someone forked the content. Claude Code pays one extra file read per skill invocation — accepted
+as the cost of a single source. Adding a skill now requires two files: the canonical instructions
+and a frontmatter stub. `.cursorrules` was deliberately not created; `.ai/README.md` documents it
+as an opt-in for teams standardizing on Cursor.
+
+---
+
+## D-006 — AI collaboration layer added as documentation, not tooling
+**Date:** 2026-07-21 · **Status:** accepted
+
+**Context:** No AI collaboration layer existed in the main tree. Two abandoned worktrees under
+`.claude/worktrees/` held prior attempts, one containing a complete Claude×Grok workflow kit branched
+from `fb8d569` — three commits stale.
+
+**Decision:** Add `CLAUDE.md`, `AI_CONTEXT.md`, `DEVELOPMENT_LOG.md`, `TASK_TRACKER.md`, and five
+skills under `.claude/skills/`. Documentation only — no changes to `src/` behavior, no new
+dependencies, no CI changes. Harvested the prior kit's Steps/Output/Guardrails skill structure and
+its honesty guardrails; discarded its Grok-specific handoff mechanics as too narrow for a
+multi-tool layer.
+
+**Alternatives:** (a) Adopt the worktree kit wholesale — rejected, it assumes a two-model
+Claude-plans/Grok-builds split that does not match this repo's actual work. (b) Root
+`ARCHITECTURE.md` — rejected, `docs/ARCHITECTURE.md` already exists and is linked from `README.md`
+and `CONTRIBUTING.md`; a duplicate would split the source of truth and drift within weeks.
+(c) Generic skill names — kept the five requested directories but scoped each to a VeriSec-specific
+surface, since generic skills duplicate what coding agents already do well.
+
+**Consequences:** `.claude/skills/` is committed and shared (only `.claude/worktrees/` is
+git-excluded). Constraints live in `CLAUDE.md`, understanding in `AI_CONTEXT.md`, with no content
+overlap — both must be updated when the review loop or the invariants change. The two stale
+worktrees are retained pending review; see TASK_TRACKER.md T-004.
+
+---
+
+## D-005 — Plugin spine via setuptools entry points
+**Date:** 2026-06 (reconstructed from `CONTRIBUTING.md`, `pyproject.toml`, `rules_api.py`)
+**Status:** accepted
+
+**Context:** Rules and adapters were in-tree only, so extending VeriSec meant forking it.
+
+**Decision:** `RuleProvider` registry with the `verisec.rules` setuptools entry point group, plus
+`AdapterSpec` TOML adapters loaded from `[adapters].paths`. Third parties ship packs as installable
+packages; VeriSec declares its own `builtin` and `django` packs through the same mechanism.
+
+**Alternatives:** Config-file rule definitions — rejected, rules need real AST analysis, not
+declarative patterns. In-tree-only extension — rejected, forces forks.
+
+**Consequences:** Rule packs are dogfooded through the public interface, so it cannot silently rot.
+New built-in packs must register in both `rules_api._builtin_pack_factories()` and `pyproject.toml`
+entry points.
+
+---
+
+## D-004 — Runtime stays dependency-free
+**Date:** 2026-05 (reconstructed from `pyproject.toml`, `docs/THREAT_MODEL.md`)
+**Status:** accepted
+
+**Context:** VeriSec executes inside CI, including on untrusted fork PRs.
+
+**Decision:** `dependencies = []`. Everything optional lives in the `dev` and `scanners` extras.
+Semgrep, CodeQL, Bandit, and pip-audit are discovered at runtime, never imported.
+
+**Alternatives:** Depend on Semgrep directly for richer analysis — rejected, it would put a large
+transitive tree inside the untrusted-PR execution path and couple release cadence to a third party.
+
+**Consequences:** All Python analysis is stdlib `ast` (hence `python_semantics.py` at 1561 lines).
+New runtime dependencies require explicit human approval.
+
+---
+
+## D-003 — Governed, shell-free verification execution
+**Date:** 2026-06-08 (`5b48402`) · **Status:** accepted
+
+**Context:** Review runs execute tools against attacker-controlled diffs. A naive runner is a remote
+code execution path.
+
+**Decision:** Commands render to argv and execute with `shell=False`. `policy.py` gates every
+execution on adapter allowlist, executable allowlist, timeout cap, output cap, blocked patterns,
+environment mode, and network posture. Three profiles: `trusted-local`, `trusted-ci`,
+`untrusted-fork-pr`. The fork profile blocks `pytest`, `poc-script`, and `custom`, forcing a static
+adapter intersection. Blocked commands are recorded as failed results with `policy_status =
+"blocked"` rather than silently dropped.
+
+**Alternatives:** Trusting configuration — rejected, config travels with the PR. Skipping
+verification on fork PRs — rejected, it would leave the highest-risk reviews unverified.
+
+**Consequences:** Adding an adapter requires a policy allowlist entry. The blocked-not-dropped rule
+keeps policy decisions auditable in the trace. CI mirrors this with a two-job split so the
+privileged comment job never touches PR code.
+
+---
+
+## D-002 — Post-fix holdout remeasure is not a new blind holdout
+**Date:** 2026-06-10 (`cd7518e`) · **Status:** accepted
+
+**Context:** The frozen holdout pilot (Django CVE-2023-46695, mechanize 0.4.6), selected blind at
+detector commit `d9754d0`, failed its gate at 0.00 primary recall. Phase 1–2 detector work then
+raised the same cases to 1.00 recall.
+
+**Decision:** Report both, labeled distinctly. `README.md` states plainly that the post-fix run "is
+engineering validation on already-observed cases, not a new blind holdout." The failed pilot result
+is retained, not replaced.
+
+**Alternatives:** Report only the 1.00 figure — rejected as measurement fraud. Discard the holdout
+after failure — rejected; a holdout that survives only when it passes measures nothing.
+
+**Consequences:** Any future blind claim needs a *newly* frozen holdout at a stated commit. These
+two cases are permanently burned for blind evaluation. This precision is load-bearing — see
+`CLAUDE.md` invariant 8 and `docs/HOLDOUT_POSTFIX.md`.
+
+---
+
+## D-001 — Validation coverage requires evidence, not capability
+**Date:** 2026-06-08 (`5b48402`) · **Status:** accepted
+
+**Context:** Marking a check covered because a tool with a matching capability tag ran would inflate
+coverage without demonstrating anything. Running pytest does not prove pytest exercised the
+vulnerable path.
+
+**Decision:** Capability matching identifies a *candidate tool*. A check becomes `covered` only when
+the tool emits a matching scanner finding or a `VERISEC_EVIDENCE:` JSON marker binding the check to
+a finding, rule, file/line, payload, or assertion. Uncovered recommended checks surface as
+validation gaps and lower reviewer-facing confidence.
+
+**Alternatives:** Capability-based coverage — rejected as the central dishonesty this project
+exists to avoid.
+
+**Consequences:** Coverage numbers are lower but meaningful. Benchmark cases need real verification
+markers, which is why `examples/validation_evidence_stub.py` and `docs/VALIDATION_EVIDENCE.md`
+exist. Weakening this invalidates every published coverage metric.
+
+---
+
+*Entries D-001 through D-005 were reconstructed from repository evidence — code, commits, and
+documentation — during the D-006 work, and were not written contemporaneously. The decisions are
+evidenced; the reasoning attributed to them is inferred. Correct any entry that misstates intent.*
