@@ -23,6 +23,69 @@ from the code.
 
 ---
 
+## D-008 — String-literal suppression resolves spans from the file, not the window
+**Date:** 2026-07-21 · **Status:** accepted
+
+**Context:** VeriSec's review of its own PR #1 produced 11 findings, all false
+positives. Every one had `analysis_scope=None` and zero dataflow steps — regex fallback
+only, semantic layer never engaged. Root cause: `_strip_python_comments` tokenized each
+line independently, so a single-line literal was blanked correctly but any line of a
+triple-quoted block raised `TokenError` and fell through verbatim, reading as bare code.
+The negative-control suite missed this because `shell_true_docs.diff` only covered the
+single-line form.
+
+**Decision:** Resolve multi-line string spans from the checked-out file
+(`_file_string_lines`) and mask window lines by patched-file line number. The checkout is
+the patched revision, so added-line numbers index directly into it. Two window-local
+fallbacks remain for when no checkout exists: whole-text tokenization, then an
+opener-only heuristic that requires real code before the quote. Added
+`negative-shell-triple-quoted` plus three unit tests, one of which asserts a real
+`shell=True` call still fires.
+
+**Alternatives:** (a) Delimiter state machine over the window — rejected, a window that
+begins mid-string cannot distinguish an opener from a closer, and guessing "closer" would
+mask preceding real code. (b) Excluding `tests/` from review — rejected, it hides a
+detector defect affecting any repository containing code samples in strings, which
+includes documentation tooling and security projects generally. (c) Lowering the gate
+threshold — rejected outright; that is weakening a check to make it pass.
+
+**Consequences:** Self-review dropped 11 → 5 findings. The masking is line-preserving so
+evidence-window mapping is unaffected. Suppression only applies where a checkout exists;
+`--diff` with no repo degrades to the window-local heuristics. Deleted lines are never
+masked, since the old file's spans cannot be resolved from a patched checkout. Rules with
+`scan_mode = "python-text"` (redos, unicode-dos) still scan string contents by design and
+are untouched — masking them would delete ReDoS detection, since regex patterns live in
+string literals.
+
+---
+
+## D-009 — Self-review evidence covers only what is actually verified
+**Date:** 2026-07-21 · **Status:** accepted
+
+**Context:** After D-008, five findings remained and validation coverage was 0.00, failing
+the PR gate. Coverage had to rise without weakening the gate.
+
+**Decision:** `scripts/self_review_evidence.py`, wired as a `custom` verification command
+in `verisec.toml`, executes the real detectors and emits `VERISEC_EVIDENCE` markers only
+for properties it verifies: unicode length-guard dominance (hardening vs introduces-risk)
+and ReDoS classification of nested-quantifier patterns against bounded equivalents.
+`py-tls-verify-disabled` recommends "integration test against expected certificate chain";
+no such test exists here, so **no marker is emitted** and the check stays uncovered. The
+script prints a `VERISEC_NOTE` naming the omission.
+
+**Alternatives:** Emitting a marker for the TLS check anyway — rejected as exactly the
+capability-over-evidence dishonesty D-001 exists to prevent. Coverage of 4/5 that is true
+beats 5/5 that is not.
+
+**Consequences:** Coverage 0.80, avg confidence 0.62 → 0.77, PR gate passes. The TLS
+finding remains visible and uncovered, which is the intended reviewer signal. Under
+`untrusted-fork-pr` the `custom` adapter is blocked, so coverage falls to 0.00 — that gate
+already failed at baseline on policy-blocked tools, so fork review is no worse, but it is
+not fixed either. Adding a real TLS integration test would be the way to close the last
+check.
+
+---
+
 ## D-007 — Skills are canonical in `.ai/`; `.claude/` holds dispatch stubs
 **Date:** 2026-07-21 · **Status:** accepted
 
