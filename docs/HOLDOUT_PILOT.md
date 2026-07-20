@@ -83,3 +83,10 @@ This two-case pilot is not a production recall estimate. The cases are now
 observed and must not be reused to claim post-hoc detector improvement. Fixes
 motivated by this analysis must be measured on a newly frozen, untouched
 holdout partition.
+
+## Post-fix remeasurement
+
+Phase 1–2 detector work was later re-run against the **same** cases for
+engineering validation only. That measurement is documented separately in
+[HOLDOUT_POSTFIX.md](HOLDOUT_POSTFIX.md) and [holdout_postfix.json](holdout_postfix.json).
+The pilot numbers above remain the blind protocol result at `d9754d0`.

@@ -1,13 +1,66 @@
 # VeriSec Agent
 
-Evidence-grounded security patch review for real repositories.
+**Deterministic security patch review for Python PRs and diffs** — findings tied
+to evidence, verification, and a replayable review bundle. No LLM required.
 
-VeriSec Agent is a foundation for a deployable security code review agent. It
-does not try to be another vulnerability classifier. It runs a review loop that
-links each security finding to evidence windows, tool traces, validation
-commands, confidence, and a reproducible review bundle.
+## What VeriSec is / is not
 
-Current release benchmark snapshot generated from
+| VeriSec **is** | VeriSec **is not** |
+| --- | --- |
+| A review loop for **unified diffs / PRs** | A drop-in multi-language enterprise SAST suite |
+| **Evidence-grounded** (code windows, tools, confidence) | An LLM agent or automatic patch rewriter |
+| Python-focused rules + AST/dataflow | A claim of universal recall on arbitrary repos |
+| Local + CI friendly with policy profiles | A replacement for human review on critical changes |
+
+Day-to-day usage: **[docs/OPERATOR.md](docs/OPERATOR.md)**.  
+Architecture and lab harness: **[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)**.  
+Contributing: **[CONTRIBUTING.md](CONTRIBUTING.md)** · Security: **[SECURITY.md](SECURITY.md)** ·
+Changelog: **[CHANGELOG.md](CHANGELOG.md)**.
+
+## Quick start (3 commands)
+
+```powershell
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1
+python -m pip install -e ".[dev]"
+
+python -m verisec_agent init
+python -m verisec_agent review --diff examples/demo.diff --repo . --out verisec-runs/demo
+# Open verisec-runs/demo/report.md
+```
+
+That is the full operator happy path. The terminal prints a severity-sorted
+finding summary, validation gaps, and next steps. Alias: `verisec r` for
+`review`.
+
+**Review your own change**
+
+```powershell
+git diff main...HEAD > change.diff
+python -m verisec_agent review --diff change.diff --repo . --out verisec-runs/change
+```
+
+**Command surfaces** (see `python -m verisec_agent -h`)
+
+| Surface | Commands |
+| --- | --- |
+| **Operator** | `init`, `review` (`r`), `replay`, `tools`, `pr-comment`, `github-comment` |
+| **CI** | `gate`, `attest` |
+| **Lab** (benchmarks / release) | `eval`, `portfolio`, `dashboard`, `case-audit`, `case-promote`, `partition-audit`, `failure-analysis`, `scanner-run`, `scanner-baseline` |
+
+## Scope (operator)
+
+- Ingest unified diffs from PRs, patches, or CVE fixes.
+- Localize evidence windows and expand repo context when a checkout exists.
+- Seed security hypotheses (rules + Python AST / dataflow).
+- Run configured verification (tests, linters, Semgrep/CodeQL when present).
+- Emit reviewer JSON/Markdown bundles and optional PR comments.
+- Apply execution policy profiles for local, CI, and untrusted fork PRs.
+
+## Measured performance (curated sets)
+
+These are **curated-set** measurements, not estimates of performance on arbitrary
+repositories. Snapshot from
 [docs/release_benchmark_matrix.json](docs/release_benchmark_matrix.json)
 ([Markdown](docs/RELEASE_BENCHMARK.md)):
 
@@ -18,72 +71,34 @@ Current release benchmark snapshot generated from
 | Semgrep baseline | 3 OSS CVE/PR cases | 10 isolated scanner controls | 0.00 | 0.00 | 0 | 2 | 2 | 1.00 | 0.00 | 0 |
 | CodeQL baseline | 3 OSS CVE/PR cases | 10 isolated scanner controls | 0.00 | 0.00 | 0 | 10 | 10 | 1.00 | 0.00 | 0 |
 
-These are curated-set measurements, not estimates of performance on arbitrary
-repositories. The scanner rows use patch-overlap scoring for the recorded
-configurations; a zero recall means those configurations did not match the
-labeled changed lines in this set, not that VeriSec universally outperforms
-Semgrep or CodeQL. The fast profile may reuse captured scanner artifacts, while
-the nightly profile reruns scanners live for drift detection.
+Scanner rows use patch-overlap scoring for the recorded configurations; zero
+recall means those configs did not match labeled changed lines in this set.
 
-The first frozen holdout pilot is intentionally reported separately:
+**Holdout protocol** (blind pilot vs later post-fix remeasure):
 
 | Split | Cases | Partition Overlap | Primary Recall | Primary Precision | Verified Patches | Gate |
 | --- | ---: | ---: | ---: | ---: | ---: | --- |
-| Holdout pilot at `d9754d0` | 2 | 0/10 reference cases | 0.00 | 0.00 | 2/2 | failed |
+| Holdout pilot at `d9754d0` (blind) | 2 | 0/10 reference cases | 0.00 | 0.00 | 2/2 | failed |
+| Holdout post-fix remeasure (Phase 1–2) | 2 | 0/10 reference cases | 1.00 | 1.00 | 2/2 | passed |
 
-The failed gate is the result: one case produced a semantic rule confusion and
-one produced no finding. See [docs/HOLDOUT_PILOT.md](docs/HOLDOUT_PILOT.md) and
-[docs/holdout_pilot.json](docs/holdout_pilot.json). These observed cases will
-not be reused to claim post-hoc detector improvement.
+Details: [docs/HOLDOUT_PILOT.md](docs/HOLDOUT_PILOT.md),
+[docs/HOLDOUT_POSTFIX.md](docs/HOLDOUT_POSTFIX.md). The post-fix run is
+engineering validation on already-observed cases, not a new blind holdout.
 
-## Initial scope
+## Lab / maintainers (optional)
 
-- Ingest unified diffs from PRs, patches, or CVE fixes.
-- Localize changed evidence windows with file and line context.
-- Expand repository source context around each finding when a checkout is
-  available.
-- Seed security hypotheses from risky code patterns.
-- Run configured verification commands such as tests, static analysis, or
-  project-specific checks.
-- Map verification tools to explicit capabilities such as `unit-test`,
-  `static-analysis`, `semgrep`, and `command-injection`.
-- Apply a verification policy for allowed adapters, timeout limits, blocked
-  command patterns, and unavailable tool warnings.
-- Emit reviewer-facing JSON reports and reproducibility bundles.
-- Render PR-ready Markdown comments from a single review or batch evaluation.
-
-## Quick start
+Full research and release harness (keep using when you maintain benchmarks):
 
 ```powershell
-python -m venv .venv
-.\.venv\Scripts\Activate.ps1
-python -m pip install -e ".[dev]"
 python -m verisec_agent tools
-python -m verisec_agent review --diff examples/demo.diff --repo . --out verisec-runs/demo
-python -m verisec_agent replay --bundle verisec-runs/demo --repo .
 python -m verisec_agent eval --cases examples/eval_cases.json --out verisec-runs/demo-eval --config examples/demo_verisec.toml
-python -m verisec_agent case-audit --cases examples/oss_seed_cases.json --out verisec-runs/oss-seed-audit --require-verification
-python -m verisec_agent case-promote --candidates examples/candidate_cases.json --existing-promoted examples/promoted_candidate_cases.json --out verisec-runs/candidate-promotion-plan
-python -m verisec_agent partition-audit --cases examples/holdout_cases.json --against examples/oss_seed_cases.json --against examples/promoted_candidate_cases.json --out verisec-runs/holdout-partition-audit --fail-on-overlap
-python -m verisec_agent portfolio --manifest verisec_portfolio.holdout.json --out verisec-runs/holdout-pilot --policy-profile trusted-ci
-python -m verisec_agent failure-analysis --evaluation verisec-runs/holdout-pilot/evaluations/holdout-pilot/evaluation.json --out verisec-runs/holdout-failure-analysis
-python -m verisec_agent eval --cases examples/oss_seed_cases.json --out verisec-runs/oss-seed --fail-fast
-python -m verisec_agent eval --cases examples/promoted_candidate_cases.json --out verisec-runs/promoted-cves --fail-fast --resume
-python -m verisec_agent eval --cases examples/negative_control_cases.json --out verisec-runs/negative-controls --fail-fast
-python -m verisec_agent scanner-baseline --cases examples/oss_seed_cases.json --results examples/baselines/semgrep_oss_seed.json --out verisec-runs/semgrep-oss
-python -m verisec_agent scanner-run --cases examples/oss_seed_cases.json --out verisec-runs/semgrep-live
-python -m verisec_agent gate --evaluation verisec-runs/demo-eval/evaluation.json --out verisec-runs/demo-gate --min-validation-coverage 0.5 --min-accepted-finding-rate 1.0 --min-primary-precision 1.0 --max-unexpected-finding-rate 0.0
-python -m verisec_agent dashboard --evaluation demo=verisec-runs/demo-eval/evaluation.json --gate demo=verisec-runs/demo-gate/gate.json --evaluation negative-controls=verisec-runs/negative-controls/evaluation.json --out verisec-runs/regression-dashboard
 python -m verisec_agent portfolio --manifest verisec_portfolio.json --out verisec-runs/release-portfolio
 python -m verisec_agent portfolio --manifest verisec_portfolio.nightly.json --out verisec-runs/nightly-portfolio
 python -m verisec_agent attest --index verisec-runs/release-portfolio/artifact_index.json --out verisec-runs/release-portfolio-attestation
-python -m verisec_agent pr-comment --evaluation verisec-runs/demo-eval/evaluation.json --gate verisec-runs/demo-gate/gate.json --out verisec-runs/demo-pr-comment.md
-python -m verisec_agent github-comment --body verisec-runs/demo-pr-comment.md --repo owner/repo --pr 123 --dry-run
-python -m verisec_agent review --pr 123 --github-repo owner/repo --repo . --out verisec-runs/pr-123
 python -m pytest
 ```
 
-Optional live scanner setup:
+Optional live scanners:
 
 ```powershell
 .\scripts\bootstrap_scanners.ps1
@@ -91,21 +106,31 @@ python -m verisec_agent scanner-run --adapter semgrep --cases examples/scanner_s
 python -m verisec_agent scanner-run --adapter codeql --cases examples/scanner_smoke_cases.json --out verisec-runs/codeql-smoke
 ```
 
-The scanner runner discovers `semgrep` and `codeql` from PATH, `VERISEC_SEMGREP`
-or `VERISEC_CODEQL`, the local `.venv`, and `tools/codeql*/codeql/` bundles.
-See [docs/PORTFOLIO_PROFILES.md](docs/PORTFOLIO_PROFILES.md) for the fast
-release profile versus live nightly scanner profile.
+Scanner discovery uses PATH, `VERISEC_SEMGREP` / `VERISEC_CODEQL`, `.venv`, and
+`tools/codeql*/codeql/`. Profiles:
+[docs/PORTFOLIO_PROFILES.md](docs/PORTFOLIO_PROFILES.md).
+
+Additional lab commands: `case-audit`, `case-promote`, `partition-audit`,
+`failure-analysis`, `scanner-baseline`, `dashboard`, `gate`, `pr-comment`,
+`github-comment`, `replay`. Run `python -m verisec_agent -h` for the full list.
+
+## Review bundle contents
 
 The generated bundle contains:
 
 - `report.json`: reviewer-facing findings and verification summary.
 - `report.md`: human-readable reviewer report with evidence, repository
   context, and validation coverage.
+- `report.sarif`: SARIF 2.1.0 export for GitHub code scanning and other UIs.
 - `trace.jsonl`: append-only agent decision and tool events.
 - `inputs/diff.patch`: the reviewed patch input.
 - `inputs/source.json`: diff source metadata for audit and replay.
 - `tools/*.txt`: captured command output for each verification tool.
 - `replay/replay.json`: verification replay summary when `verisec replay` is used.
+
+Validation coverage is evidence-backed. See
+[docs/VALIDATION_EVIDENCE.md](docs/VALIDATION_EVIDENCE.md) and
+`examples/validation_evidence_stub.py` for `VERISEC_EVIDENCE` markers.
 
 Batch evaluation writes:
 
