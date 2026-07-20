@@ -3,10 +3,13 @@ from __future__ import annotations
 import io
 import re
 import tokenize
+from collections import defaultdict
 from dataclasses import dataclass
+from pathlib import Path
 
 from verisec_agent.models import EvidenceWindow, SecurityHypothesis, Severity
-from verisec_agent.python_semantics import analyze_python_window
+from verisec_agent.python_semantics import SemanticMatch
+from verisec_agent.rules_api import RuleRegistry, load_rule_registry
 
 
 @dataclass(frozen=True)
@@ -21,6 +24,8 @@ class Rule:
     confidence: float
     false_positive_notes: str
     scan_mode: str = "python-code"
+    family: str = "general"
+    mode: str = "either"
 
 
 RULES: tuple[Rule, ...] = (
@@ -234,17 +239,44 @@ RULES: tuple[Rule, ...] = (
             "guards an attacker-controlled expensive operation."
         ),
         scan_mode="python-text",
+        family="complexity-dos",
+        mode="adds-hardening",
+    ),
+    Rule(
+        rule_id="py-unicode-normalization-dos",
+        title="Unicode normalization complexity DoS path changed",
+        severity="medium",
+        pattern=re.compile(
+            r"unicodedata\.normalize\s*\(\s*[\"']NFK[CD][\"']"
+            r"|normalize\s*\(\s*[\"']NFK[CD][\"']"
+        ),
+        risk=(
+            "Unicode normalization (especially NFKC) on attacker-controlled strings "
+            "can cause CPU denial of service without prior length or validity bounds."
+        ),
+        fix_guidance=(
+            "Reject or truncate overlong inputs before calling unicodedata.normalize, "
+            "and keep expensive normalization off invalid values."
+        ),
+        recommended_validation=("Unicode normalization complexity regression test",),
+        confidence=0.66,
+        false_positive_notes=(
+            "Normalization on trusted constants is safe; hardening guards should dominate "
+            "the normalize call on the same function path."
+        ),
+        scan_mode="python-text",
+        family="complexity-dos",
+        mode="either",
     ),
     Rule(
         rule_id="py-regex-redos-hardening",
         title="Regular expression DoS hardening changed",
         severity="medium",
         pattern=re.compile(
-            r"re\.(search|match|compile)\s*\([^,\n]*(\(\s*[^)]*\|[^)]*\)\s*\+|\*\s*\$)"
+            r"re\.(search|match|compile|fullmatch|findall|sub)\s*\([^,\n]*"
+            r"(\(\s*[^)]*\|[^)]*\)\s*\+|\(\?:?\.\*,\)\*|\*\s*\$)"
             r"|PROCESS_AS_KEYWORD\s*=\s*object\(\)"
             r"|action\s+is\s+keywords\.PROCESS_AS_KEYWORD"
-            r"|max_length\s*=\s*2048"
-            r"|len\(value\)\s*>\s*(self\.max_length|320)"
         ),
         risk="Ambiguous repetition or alternation in regular expressions can cause ReDoS.",
         fix_guidance=(
@@ -254,12 +286,42 @@ RULES: tuple[Rule, ...] = (
         confidence=0.63,
         false_positive_notes=(
             "Regex hardening is context-sensitive; confirm the changed expression is on "
-            "attacker-controlled input."
+            "attacker-controlled input. Length bounds alone are not ReDoS signals."
         ),
         scan_mode="python-text",
+        family="redos",
+        mode="adds-hardening",
+    ),
+    Rule(
+        rule_id="py-regex-redos",
+        title="Regular expression DoS risk introduced",
+        severity="medium",
+        pattern=re.compile(
+            r"re\.(search|match|compile|fullmatch|findall|sub)\s*\(\s*[rbu]*[\"'][^\"']*"
+            r"(\([^)]*[+*][^)]*\)[+*]|\(\?:?\.\*,\)\*)"
+        ),
+        risk=(
+            "Nested quantifiers or other catastrophic-backtracking shapes can deny "
+            "service when applied to attacker-controlled input."
+        ),
+        fix_guidance=(
+            "Rewrite the expression to linear-time form, bound input length before matching, "
+            "or use an atomic/possessive engine where available."
+        ),
+        recommended_validation=("ReDoS regression test with adversarial input",),
+        confidence=0.68,
+        false_positive_notes=(
+            "Shape heuristics can over-approximate; confirm the subject is untrusted and "
+            "that the pattern is reachable in production paths."
+        ),
+        scan_mode="python-text",
+        family="redos",
+        mode="introduces-risk",
     ),
 )
 
+# Built-in pack content. ``RULES`` remains the default full set for back-compat.
+BUILTIN_RULES: tuple[Rule, ...] = RULES
 RULE_BY_ID = {rule.rule_id: rule for rule in RULES}
 
 
@@ -267,17 +329,51 @@ def generate_hypotheses(
     windows: tuple[EvidenceWindow, ...],
     *,
     min_confidence: float,
+    repo_path: Path | None = None,
+    rule_packs: tuple[str, ...] | None = None,
+    rule_registry: RuleRegistry | None = None,
 ) -> tuple[SecurityHypothesis, ...]:
+    registry = rule_registry or load_rule_registry(rule_packs)
+    active_rules = registry.rules()
+    rules_by_id = {rule.rule_id: rule for rule in active_rules}
+
     hypotheses: list[SecurityHypothesis] = []
     seen: set[tuple[str, str, str]] = set()
     seen_windows: set[tuple[str, str, int, int]] = set()
 
+    windows_by_file: dict[str, list[EvidenceWindow]] = defaultdict(list)
+    for window in windows:
+        if _is_python_path(window.file_path):
+            windows_by_file[window.file_path].append(window)
+
+    # File-scope matches attach to exactly one best window per (file, rule).
+    file_matches = _file_level_matches(windows, repo_path=repo_path, registry=registry)
+    file_match_by_window: dict[int, list[SemanticMatch]] = defaultdict(list)
+    for file_path, matches in file_matches.items():
+        file_windows = windows_by_file.get(file_path, [])
+        for match in matches:
+            target = _best_window_for_match(match, file_windows)
+            if target is not None:
+                file_match_by_window[id(target)].append(match)
+
     for window in windows:
         if not _is_python_path(window.file_path):
             continue
-        for match in analyze_python_window(window):
-            rule = RULE_BY_ID.get(match.rule_id)
-            if rule is None or rule.confidence < min_confidence:
+
+        semantic_matches = _prefer_redos_mode(
+            _prefer_richer_matches(
+                list(registry.analyze_window(window))
+                + file_match_by_window.get(id(window), [])
+            )
+        )
+        window_families: set[str] = set()
+
+        for match in semantic_matches:
+            rule = rules_by_id.get(match.rule_id)
+            if rule is None:
+                continue
+            confidence = _clamp_confidence(rule.confidence + match.confidence_boost)
+            if confidence < min_confidence:
                 continue
             window_key = _window_rule_key(rule, window)
             if window_key in seen_windows:
@@ -287,7 +383,10 @@ def generate_hypotheses(
                 continue
             seen_windows.add(window_key)
             seen.add(key)
-            hypotheses.append(_build_hypothesis(rule, window))
+            family = match.family or rule.family
+            if family:
+                window_families.add(family)
+            hypotheses.append(_build_hypothesis(rule, window, match=match, confidence=confidence))
 
         added_text = "\n".join(
             line.content for line in window.lines if line.change_type == "add"
@@ -296,7 +395,9 @@ def generate_hypotheses(
             line.content for line in window.lines if line.change_type == "delete"
         )
         changed_text = "\n".join(value for value in (added_text, deleted_text) if value)
-        for rule in RULES:
+        for rule in active_rules:
+            if _should_skip_regex_fallback(rule, window_families):
+                continue
             scan_text = _scan_text_for_rule(rule, changed_text)
             if not rule.pattern.search(scan_text) or rule.confidence < min_confidence:
                 continue
@@ -310,25 +411,204 @@ def generate_hypotheses(
             seen_windows.add(window_key)
             hypotheses.append(_build_hypothesis(rule, window))
 
-    return tuple(hypotheses)
+    return _dedupe_redos_hypotheses(tuple(hypotheses))
+
+
+def _should_skip_regex_fallback(rule: Rule, window_families: set[str]) -> bool:
+    """Prefer semantic hits and avoid cross-family rule confusion."""
+    if rule.family == "redos" and "complexity-dos" in window_families:
+        return True
+    # Prefer AST/dataflow ReDoS hits over a second regex-only redos finding.
+    if rule.family == "redos" and "redos" in window_families:
+        return True
+    # Prefer AST/dataflow hits for unicode normalize over a second regex-only hit.
+    return (
+        rule.rule_id == "py-unicode-normalization-dos"
+        and "complexity-dos" in window_families
+    )
+
+
+def _file_level_matches(
+    windows: tuple[EvidenceWindow, ...],
+    *,
+    repo_path: Path | None,
+    registry: RuleRegistry,
+) -> dict[str, tuple[SemanticMatch, ...]]:
+    if repo_path is None:
+        return {}
+
+    changed_by_file: dict[str, set[int]] = defaultdict(set)
+    for window in windows:
+        if not _is_python_path(window.file_path):
+            continue
+        for line in window.lines:
+            if line.change_type == "add" and line.new_line is not None:
+                changed_by_file[window.file_path].add(line.new_line)
+
+    results: dict[str, tuple[SemanticMatch, ...]] = {}
+    root = repo_path.resolve()
+    for relative_path, changed_lines in changed_by_file.items():
+        target = (root / relative_path).resolve()
+        try:
+            target.relative_to(root)
+        except ValueError:
+            continue
+        if not target.is_file():
+            continue
+        matches = registry.analyze_file(file_path=target, changed_lines=changed_lines)
+        if matches:
+            results[relative_path] = matches
+    return results
+
+
+def _best_window_for_match(
+    match: SemanticMatch,
+    file_windows: list[EvidenceWindow],
+) -> EvidenceWindow | None:
+    if not file_windows:
+        return None
+    if match.sink_line is not None:
+        for window in file_windows:
+            if window.start_line <= match.sink_line <= window.end_line:
+                return window
+        # Sink is outside every evidence window: attach to the nearest window.
+        return min(
+            file_windows,
+            key=lambda window: min(
+                abs(window.start_line - match.sink_line),
+                abs(window.end_line - match.sink_line),
+            ),
+        )
+    for window in file_windows:
+        if any(line.change_type == "add" for line in window.lines):
+            return window
+    return file_windows[0]
+
+
+def _prefer_richer_matches(matches: list[SemanticMatch]) -> list[SemanticMatch]:
+    best: dict[str, SemanticMatch] = {}
+    for match in matches:
+        current = best.get(match.rule_id)
+        if current is None or _match_richness(match) > _match_richness(current):
+            best[match.rule_id] = match
+    return list(best.values())
+
+
+def _prefer_redos_mode(matches: list[SemanticMatch]) -> list[SemanticMatch]:
+    """Prefer hardening over introduces-risk when both redos modes fire."""
+    if any(match.rule_id == "py-regex-redos-hardening" for match in matches):
+        return [match for match in matches if match.rule_id != "py-regex-redos"]
+    return matches
+
+
+def _dedupe_redos_hypotheses(
+    hypotheses: tuple[SecurityHypothesis, ...],
+) -> tuple[SecurityHypothesis, ...]:
+    """Drop introduces-risk ReDoS when the same file already has hardening."""
+    hardened_files = {
+        item.evidence.file_path
+        for item in hypotheses
+        if item.rule_id == "py-regex-redos-hardening"
+    }
+    if not hardened_files:
+        return hypotheses
+    return tuple(
+        item
+        for item in hypotheses
+        if not (
+            item.rule_id == "py-regex-redos" and item.evidence.file_path in hardened_files
+        )
+    )
+
+
+def _match_richness(match: SemanticMatch) -> tuple[int, float, int, int]:
+    return (
+        1 if match.analysis_scope == "file" else 0,
+        match.confidence_boost,
+        len(match.steps),
+        len(match.sources),
+    )
 
 
 def _is_python_path(file_path: str) -> bool:
     return file_path.lower().endswith((".py", ".pyi"))
 
 
-def _build_hypothesis(rule: Rule, window: EvidenceWindow) -> SecurityHypothesis:
+def _build_hypothesis(
+    rule: Rule,
+    window: EvidenceWindow,
+    *,
+    match: SemanticMatch | None = None,
+    confidence: float | None = None,
+) -> SecurityHypothesis:
+    notes = ""
+    steps: tuple[str, ...] = ()
+    scope = ""
+    resolved_confidence = rule.confidence if confidence is None else confidence
+    title = rule.title
+    if match is not None:
+        steps = match.steps
+        scope = match.analysis_scope
+        notes = _format_analysis_notes(match, rule=rule)
+        title = _title_for_mode(rule, match.mode)
+        if match.mode == "adds-hardening":
+            resolved_confidence = _clamp_confidence(resolved_confidence)
+        elif match.mode == "introduces-risk":
+            resolved_confidence = _clamp_confidence(resolved_confidence + 0.02)
     return SecurityHypothesis(
         rule_id=rule.rule_id,
-        title=rule.title,
+        title=title,
         severity=rule.severity,
-        confidence=rule.confidence,
+        confidence=resolved_confidence,
         evidence=window,
         risk=rule.risk,
         recommended_validation=rule.recommended_validation,
         fix_guidance=rule.fix_guidance,
         false_positive_notes=rule.false_positive_notes,
+        dataflow_steps=steps,
+        analysis_scope=scope,
+        analysis_notes=notes,
     )
+
+
+def _title_for_mode(rule: Rule, mode: str) -> str:
+    if rule.rule_id == "py-unicode-normalization-dos":
+        if mode == "adds-hardening":
+            return "Unicode normalization complexity DoS hardening changed"
+        if mode == "introduces-risk":
+            return "Unicode normalization complexity DoS path introduced"
+        return rule.title
+    if rule.rule_id == "py-regex-redos-hardening" and mode == "adds-hardening":
+        return "Regular expression DoS hardening changed"
+    if rule.rule_id == "py-regex-redos" and mode == "introduces-risk":
+        return "Regular expression DoS risk introduced"
+    return rule.title
+
+
+def _format_analysis_notes(match: SemanticMatch, *, rule: Rule | None = None) -> str:
+    parts: list[str] = []
+    family = match.family or (rule.family if rule is not None else "")
+    mode = match.mode or (rule.mode if rule is not None else "")
+    if family:
+        parts.append(f"Family: {family}.")
+    if mode and mode != "either":
+        parts.append(f"Mode: {mode}.")
+    if match.analysis_scope:
+        parts.append(f"AST/dataflow scope: {match.analysis_scope}.")
+    if match.sink:
+        location = f" at line {match.sink_line}" if match.sink_line else ""
+        parts.append(f"Sink: {match.sink}{location}.")
+    if match.sources:
+        parts.append("Sources: " + ", ".join(f"`{source}`" for source in match.sources) + ".")
+    if match.steps:
+        parts.append("Path: " + " → ".join(match.steps) + ".")
+    if match.confidence_boost:
+        parts.append(f"Semantic confidence boost: +{match.confidence_boost:.2f}.")
+    return " ".join(parts)
+
+
+def _clamp_confidence(value: float) -> float:
+    return max(0.0, min(0.99, round(value, 2)))
 
 
 def _scan_text_for_rule(rule: Rule, text: str) -> str:

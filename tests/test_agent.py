@@ -110,14 +110,19 @@ print(json.dumps({
     assert report.summary["validation_with_tool_evidence"] == 1
     assert report.summary["tool_supported_findings"] == 1
     assert report.summary["avg_confidence"] == report.findings[0].confidence
-    assert report.findings[0].base_confidence == 0.7
+    # base_confidence is pre-calibration (may already include AST/dataflow boost).
+    assert report.findings[0].base_confidence is not None
+    assert report.findings[0].base_confidence >= 0.7
     assert report.findings[0].confidence > report.findings[0].base_confidence
     assert "Matched structured tool evidence" in report.findings[0].confidence_notes
+    assert report.findings[0].dataflow_steps
+    assert report.findings[0].analysis_scope in {"window", "file"}
     assert report.validation_plan[1].status == "covered"
     assert "subprocess-shell-true" in report.validation_plan[1].tool_evidence[0]
     markdown = (tmp_path / "bundle" / "report.md").read_text(encoding="utf-8")
     assert "## Tool Findings" in markdown
     assert "Tool evidence: semgrep/" in markdown
+    assert "Semantic analysis:" in markdown
 
 
 def test_agent_links_codeql_sarif_artifact_evidence(tmp_path: Path) -> None:

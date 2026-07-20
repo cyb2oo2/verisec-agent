@@ -3,11 +3,40 @@ max_evidence_lines = 12
 source_context_lines = 8
 min_confidence = 0.35
 
+# Rule packs loaded through the RuleProvider registry.
+# "builtin" includes the full default rule set (AST + regex).
+# "django" is an optional specialized pack (also covered by builtin today).
+[rules]
+packs = ["builtin"]
+
+# Optional TOML adapter plugins (merged with built-in adapters).
+# Examples:
+# paths = ["adapters/bandit.toml", "adapters/pip-audit.toml"]
+[adapters]
+paths = []
+
 [policy]
 enabled = true
 execution_profile = "trusted-local"
-allowed_adapters = ["pytest", "ruff", "semgrep", "codeql", "poc-script", "custom"]
-allowed_executables = ["{python}", "pytest", "ruff", "semgrep", "codeql"]
+allowed_adapters = [
+  "pytest",
+  "ruff",
+  "semgrep",
+  "codeql",
+  "poc-script",
+  "custom",
+  "bandit",
+  "pip-audit",
+]
+allowed_executables = [
+  "{python}",
+  "pytest",
+  "ruff",
+  "semgrep",
+  "codeql",
+  "bandit",
+  "pip-audit",
+]
 max_timeout_seconds = 600
 max_output_bytes = 1000000
 block_unavailable_adapters = false
@@ -24,3 +53,12 @@ required = false
 id = "ruff"
 timeout_seconds = 60
 required = false
+
+# Optional external scanners (uncomment paths + blocks after install):
+#   pip install bandit pip-audit
+# [[verification.adapters]]
+# id = "bandit"
+# required = false
+# [[verification.adapters]]
+# id = "pip-audit"
+# required = false

@@ -56,6 +56,8 @@ class ReviewAgent:
         hypotheses = generate_hypotheses(
             windows,
             min_confidence=self.config.min_confidence,
+            repo_path=repo_path,
+            rule_packs=self.config.rule_packs,
         )
         trace.append("hypotheses.generated", "Generated security hypotheses", count=len(hypotheses))
 
@@ -142,6 +144,9 @@ def _finding_from_hypothesis(
         fix_guidance=hypothesis.fix_guidance,
         recommended_validation=hypothesis.recommended_validation,
         false_positive_notes=hypothesis.false_positive_notes,
+        dataflow_steps=hypothesis.dataflow_steps,
+        analysis_scope=hypothesis.analysis_scope,
+        analysis_notes=hypothesis.analysis_notes,
     )
 
 

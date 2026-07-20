@@ -75,7 +75,8 @@ def test_generate_hypotheses_flags_regex_redos_hardening() -> None:
     assert {finding.rule_id for finding in findings} == {"py-regex-redos-hardening"}
 
 
-def test_generate_hypotheses_flags_django_validator_redos_bounds() -> None:
+def test_generate_hypotheses_does_not_treat_length_bounds_alone_as_redos() -> None:
+    """Length/max_length guards without regex changes are not ReDoS signals."""
     diff = """diff --git a/django/core/validators.py b/django/core/validators.py
 --- a/django/core/validators.py
 +++ b/django/core/validators.py
@@ -97,7 +98,33 @@ def test_generate_hypotheses_flags_django_validator_redos_bounds() -> None:
         min_confidence=0.35,
     )
 
-    assert {finding.rule_id for finding in findings} == {"py-regex-redos-hardening"}
+    assert not any(finding.rule_id == "py-regex-redos-hardening" for finding in findings)
+
+
+def test_generate_hypotheses_flags_unicode_normalization_hardening() -> None:
+    diff = """diff --git a/django/contrib/auth/forms.py b/django/contrib/auth/forms.py
+--- a/django/contrib/auth/forms.py
++++ b/django/contrib/auth/forms.py
+@@ -1,6 +1,9 @@
+ import unicodedata
+ class UsernameField:
+     def to_python(self, value):
+         value = super().to_python(value)
++        if self.max_length is not None and len(value) > self.max_length:
++            return value
+         return unicodedata.normalize("NFKC", value)
+"""
+
+    findings = generate_hypotheses(
+        evidence_windows(parse_unified_diff(diff)),
+        min_confidence=0.35,
+    )
+
+    assert [finding.rule_id for finding in findings] == ["py-unicode-normalization-dos"]
+    assert findings[0].analysis_notes
+    assert "adds-hardening" in findings[0].analysis_notes
+    assert "complexity-dos" in findings[0].analysis_notes
+    assert not any(finding.rule_id == "py-regex-redos-hardening" for finding in findings)
 
 
 def test_generate_hypotheses_flags_password_similarity_dos_guard() -> None:

@@ -124,6 +124,23 @@ def _render_finding(finding: Finding, validation_steps: tuple[ValidationStep, ..
     if finding.confidence_notes:
         lines.extend([f"Confidence notes: {finding.confidence_notes}", ""])
 
+    if finding.analysis_notes or finding.dataflow_steps or finding.analysis_scope:
+        lines.extend(["Semantic analysis:", ""])
+        family, mode = _parse_family_mode(finding.analysis_notes)
+        if family:
+            lines.append(f"- Family: `{family}`")
+        if mode:
+            lines.append(f"- Mode: `{mode}`")
+        if finding.analysis_scope:
+            lines.append(f"- Scope: `{finding.analysis_scope}`")
+        if finding.analysis_notes:
+            lines.append(f"- Notes: {finding.analysis_notes}")
+        if finding.dataflow_steps:
+            lines.append("- Dataflow:")
+            for step in finding.dataflow_steps:
+                lines.append(f"  - {step}")
+        lines.append("")
+
     if finding.source_context is not None:
         lines.extend(["Repository context:", ""])
         if finding.source_context.available:
@@ -163,6 +180,18 @@ def _format_base_confidence(finding: Finding) -> str:
     if finding.base_confidence is None:
         return f"{finding.confidence:.2f}"
     return f"{finding.base_confidence:.2f}"
+
+
+def _parse_family_mode(analysis_notes: str) -> tuple[str, str]:
+    family = ""
+    mode = ""
+    for part in analysis_notes.split("."):
+        text = part.strip()
+        if text.startswith("Family: "):
+            family = text.removeprefix("Family: ").strip()
+        elif text.startswith("Mode: "):
+            mode = text.removeprefix("Mode: ").strip()
+    return family, mode
 
 
 def _validation_by_finding(
