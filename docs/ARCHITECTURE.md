@@ -75,10 +75,22 @@ interfaces.
 
 - `diff_parser.py`: unified diff parsing and evidence windows.
 - `source_context.py`: repository source context expansion around findings.
-- `hypotheses.py`: security hypothesis rules and regex fallback.
+- `hypotheses.py`: security hypothesis rules, regex fallback, and pack-aware
+  `generate_hypotheses` orchestration.
+- `rules_api.py` / `rules_builtin.py` / `rules_django.py`: `RuleProvider` plugin
+  spine and pack registry (`[rules].packs`), including setuptools entry points
+  under the group `verisec.rules`.
 - `python_semantics.py`: Python AST parsing, import-alias resolution, parameter
-  taint propagation, and sink matching for security hypotheses.
-- `tool_adapters.py`: built-in verification adapter registry and capability tags.
+  and web/env taint sources, same-file return-taint summaries, full-file analysis
+  when a checkout is available, and sink matching with explicit dataflow steps
+  for security hypotheses. Includes complexity-dos detection for Unicode
+  normalization (`unicodedata.normalize`) with length-guard dominance, plus
+  class-based ReDoS detection (`is_redos_prone`, pattern-delta hardening,
+  `re.*` sinks with taint) so redos and complexity-dos families stay distinct.
+- `tool_adapters.py`: built-in verification adapters and capability tags.
+- `adapters_api.py`: `AdapterSpec` registry, TOML adapter loading
+  (`[adapters].paths`), external scanners (Bandit, pip-audit) via
+  `parser` fields in TOML.
 - `policy.py`: verification governance for trusted and untrusted execution
   profiles, adapter and executable allowlists, timeout/output caps, unavailable
   tools, environment mode, network posture, and blocked command patterns.
@@ -126,7 +138,10 @@ interfaces.
   comments.
 - `bundle.py`: portable review bundle layout.
 - `agent.py`: orchestration of the review loop.
-- `cli.py`: command-line entry point.
+- `cli.py`: command-line entry point with operator / CI / lab command surfaces.
+- `operator.py`: first-run `init` helper and human-friendly review summaries for
+  the primary `review` happy path.
+- `sarif.py`: SARIF 2.1.0 export of review findings for code-scanning consumers.
 
 ## Script map
 

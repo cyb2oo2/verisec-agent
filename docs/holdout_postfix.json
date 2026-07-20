@@ -1,0 +1,87 @@
+{
+  "benchmark": {
+    "split": "holdout",
+    "kind": "post-fix-remeasurement",
+    "pilot_detector_freeze_commit": "d9754d0",
+    "pilot_frozen_at": "2026-06-10",
+    "measured_at": "2026-07-21",
+    "workspace_base_commit": "cd7518e",
+    "detector_changes": [
+      "phase1-py-unicode-normalization-dos",
+      "phase2-class-based-redos"
+    ],
+    "case_count": 2,
+    "manifest": "verisec_portfolio.holdout.json",
+    "output_dir": "verisec-runs/holdout-postfix"
+  },
+  "evaluation": {
+    "case_count": 2,
+    "completed_count": 2,
+    "error_count": 0,
+    "finding_count": 2,
+    "avg_confidence": 0.88,
+    "validation_coverage_rate": 1.0,
+    "tool_evidence_rate": 1.0,
+    "validation_gap_rate": 0.0,
+    "accepted_finding_rate": 1.0,
+    "primary_finding_recall": 1.0,
+    "primary_precision": 1.0,
+    "unexpected_finding_rate": 0.0,
+    "expected_rule_recall": 1.0,
+    "expected_rule_precision": 1.0,
+    "expected_finding_recall": 1.0,
+    "negative_control_violation_count": 0,
+    "verification_count": 2,
+    "verification_passed": 2
+  },
+  "gate": {
+    "passed": true,
+    "failure_count": 0
+  },
+  "failure_analysis": {
+    "case_failure_count": 0,
+    "failure_count": 0,
+    "taxonomy": {}
+  },
+  "partition_audit": {
+    "passed": true,
+    "overlap_count": 0,
+    "reference_case_count": 10
+  },
+  "case_audit": {
+    "ready": 2,
+    "blocked": 0,
+    "warnings": 0
+  },
+  "attestation": {
+    "passed": true,
+    "artifact_count": 17,
+    "failure_count": 0,
+    "output_dir": "verisec-runs/holdout-postfix-attestation"
+  },
+  "cases": [
+    {
+      "id": "django-cve-2023-46695-usernamefield-normalization-dos",
+      "expected_rule_id": "py-unicode-normalization-dos",
+      "actual_rule_id": "py-unicode-normalization-dos",
+      "file_path": "django/contrib/auth/forms.py",
+      "mode": "adds-hardening",
+      "analysis_scope": "file",
+      "confidence": 0.92,
+      "pilot_category": "semantic-rule-confusion",
+      "postfix_category": null
+    },
+    {
+      "id": "mechanize-0-4-6-www-authenticate-redos",
+      "expected_rule_id": "py-regex-redos-hardening",
+      "actual_rule_id": "py-regex-redos-hardening",
+      "file_path": "mechanize/_urllib2_fork.py",
+      "mode": "adds-hardening",
+      "analysis_scope": "window",
+      "confidence": 0.84,
+      "pilot_category": "undetected-labeled-location",
+      "postfix_category": null
+    }
+  ],
+  "claim_boundary": "Post-fix remeasurement of already-observed holdout cases after Phase 1-2 detector work. Not a new blind holdout. Pilot at d9754d0 remains the historical blind result."
+}
