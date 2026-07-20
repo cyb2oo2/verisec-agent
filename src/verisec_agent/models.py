@@ -75,6 +75,9 @@ class SecurityHypothesis:
     recommended_validation: tuple[str, ...] = ()
     fix_guidance: str = ""
     false_positive_notes: str = ""
+    dataflow_steps: tuple[str, ...] = ()
+    analysis_scope: str = ""
+    analysis_notes: str = ""
 
 
 @dataclass(frozen=True)
@@ -151,6 +154,9 @@ class Finding:
     false_positive_notes: str
     base_confidence: float | None = None
     confidence_notes: str = ""
+    dataflow_steps: tuple[str, ...] = ()
+    analysis_scope: str = ""
+    analysis_notes: str = ""
 
 
 @dataclass(frozen=True)
