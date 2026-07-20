@@ -183,7 +183,7 @@ Path(sys.argv[1]).write_text(json.dumps({
             verification_commands=(
                 VerificationCommand(
                     name="codeql",
-                    command='"{python}" codeql_stub.py "{tool_dir}\\codeql.sarif"',
+                    command='"{python}" codeql_stub.py "{tool_dir}/codeql.sarif"',
                     adapter="codeql",
                     capabilities=("codeql", "command-injection"),
                 ),
