@@ -18,6 +18,18 @@ def document_forbidden_shell_pattern() -> str:
     return "subprocess.run(user_input, shell=True)"
 
 
+def document_forbidden_shell_sample() -> str:
+    # Multi-line code samples embedded in triple-quoted strings are data, not
+    # executable code. Each line reads as bare source, so line-oriented literal
+    # detection must not treat them as real call sites.
+    return '''
+import subprocess
+
+def run(user_input):
+    return subprocess.run(user_input, shell=True)
+'''
+
+
 def fetch_with_default_tls(url: str) -> requests.Response:
     return requests.get(url, verify=True, timeout=10)
 
