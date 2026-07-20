@@ -80,7 +80,9 @@ primitives because it exercises them through the repo-aware `generate_hypotheses
 `pip install -e .` in the tree under test — it fails in a fresh worktree because `.egg-info` is
 gitignored. Environmental, not a defect, but worth knowing before trusting a worktree test run.
 
-Not pushed.
+Pushed to `origin/cyb/release-hardening`. No PR opened. Note that `origin/main` is 10 commits
+behind this branch — `cd7518e`, `d9754d0`, and `5b48402` had also never been pushed, so a PR from
+here to `main` will carry those three older commits in addition to the seven from this session.
 
 ### T-000 — AI collaboration layer
 **Completed:** 2026-07-21
