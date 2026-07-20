@@ -54,6 +54,18 @@ id = "ruff"
 timeout_seconds = 60
 required = false
 
+# Property checks that back VeriSec's review of its own pull requests with
+# executed evidence. Emits VERISEC_EVIDENCE markers only for checks it verifies;
+# see scripts/self_review_evidence.py for what is deliberately left uncovered.
+[[verification.commands]]
+name = "self-review-evidence"
+argv = ["{python}", "scripts/self_review_evidence.py"]
+timeout_seconds = 60
+required = false
+adapter = "custom"
+description = "Emit VERISEC_EVIDENCE markers for VeriSec's own detector properties."
+capabilities = ["unit-test", "property-check", "python-test"]
+
 # Optional external scanners (uncomment paths + blocks after install):
 #   pip install bandit pip-audit
 # [[verification.adapters]]
