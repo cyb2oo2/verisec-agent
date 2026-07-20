@@ -14,20 +14,6 @@ do not duplicate roadmap items here until they become active work.
 
 ## Active
 
-### T-001 — Land the release-hardening branch
-**Status:** review
-
-Branch `cyb/release-hardening` carries substantial unlanded work: 15 modified files, 15 untracked,
-6 new modules, 4 new test suites. Per `CHANGELOG.md` `[Unreleased]` this covers the plugin spine,
-the operator surface (`verisec init`, grouped CLI, `review` → `r` alias), the
-`py-unicode-normalization-dos` detector, class-based ReDoS with pattern-delta hardening, full-file
-AST analysis, SARIF export, and `CONTRIBUTING.md` / `SECURITY.md`.
-
-State: 175 tests pass, ruff clean.
-
-Next: split into reviewable commits — `CONTRIBUTING.md` asks for one detector family or one docs
-surface per PR, and this is currently several of both in one working tree.
-
 ### T-002 — Unblock the two remaining candidate CVE cases
 **Status:** blocked
 
@@ -77,6 +63,24 @@ required" property is central to the project's positioning.
 ---
 
 ## Done
+
+### T-001 — Land the release-hardening branch
+**Completed:** 2026-07-21
+
+Split the working tree into five focused commits (`f04b771`..`4a10153`): semantics primitives,
+plugin spine, SARIF export, operator surface, documentation. Each verified `ruff`-clean and
+green in an isolated worktree; branch tip is 175 passing.
+
+Two impurities, deliberate and recorded in the commit messages: `hypotheses.py` lands whole in the
+plugin-spine commit because its `rules_api` import and new detector `RULES` occupy interleaved
+hunks in one file, and `tests/test_python_semantics.py` lands with the spine rather than the
+primitives because it exercises them through the repo-aware `generate_hypotheses` signature.
+
+`tests/test_plugins.py::test_installed_verisec_rules_entry_points_exist` requires
+`pip install -e .` in the tree under test — it fails in a fresh worktree because `.egg-info` is
+gitignored. Environmental, not a defect, but worth knowing before trusting a worktree test run.
+
+Not pushed.
 
 ### T-000 — AI collaboration layer
 **Completed:** 2026-07-21
