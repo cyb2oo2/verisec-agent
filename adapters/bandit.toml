@@ -1,0 +1,27 @@
+# External Bandit adapter proof-of-concept.
+# Enable from verisec.toml:
+#
+# [adapters]
+# paths = ["adapters/bandit.toml"]
+#
+# [[verification.adapters]]
+# id = "bandit"
+# required = false
+#
+# And allow the adapter/executable in [policy].
+
+id = "bandit"
+name = "bandit"
+description = "Run Bandit Python security linter and parse JSON findings."
+command = "bandit -f json -r . -q"
+executable = "bandit"
+parser = "bandit-json"
+timeout_seconds = 120
+required = false
+capabilities = [
+  "bandit",
+  "static-analysis",
+  "python-security",
+  "command-injection",
+  "sql-injection",
+]

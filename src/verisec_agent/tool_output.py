@@ -21,11 +21,155 @@ def parse_tool_output(
     stdout: str,
     tool_dir: Path,
 ) -> ParsedToolOutput:
-    if adapter == "semgrep":
+    parser = _resolve_parser_name(adapter)
+    if parser == "semgrep" or adapter == "semgrep":
         return ParsedToolOutput(findings=parse_semgrep_json(tool_name=tool_name, payload=stdout))
-    if adapter == "codeql":
+    if parser == "codeql" or adapter == "codeql":
         return _parse_codeql_output(tool_name=tool_name, stdout=stdout, tool_dir=tool_dir)
+    if parser == "bandit-json" or adapter == "bandit":
+        return ParsedToolOutput(
+            findings=parse_bandit_json(tool_name=tool_name, payload=stdout)
+        )
+    if parser == "pip-audit-json" or adapter in {"pip-audit", "pip_audit"}:
+        return ParsedToolOutput(
+            findings=parse_pip_audit_json(tool_name=tool_name, payload=stdout)
+        )
     return ParsedToolOutput()
+
+
+def _resolve_parser_name(adapter: str) -> str:
+    try:
+        from verisec_agent.adapters_api import get_adapter_registry
+
+        return get_adapter_registry().parser_for(adapter)
+    except Exception:
+        return ""
+
+
+def parse_bandit_json(*, tool_name: str, payload: str) -> tuple[ToolFinding, ...]:
+    """Parse Bandit ``-f json`` output into tool findings."""
+    if not payload.strip():
+        return ()
+    try:
+        data = json.loads(payload)
+    except json.JSONDecodeError:
+        return ()
+
+    findings: list[ToolFinding] = []
+    for item in data.get("results", []):
+        file_path = str(item.get("filename") or item.get("path") or "")
+        if not file_path:
+            continue
+        start_line = _int_or_default(item.get("line_number"), 0)
+        if start_line <= 0:
+            continue
+        line_range = item.get("line_range")
+        if isinstance(line_range, list) and line_range:
+            end_line = _int_or_default(line_range[-1], start_line)
+        else:
+            end_line = start_line
+        severity = str(item.get("issue_severity") or item.get("severity") or "unknown")
+        findings.append(
+            ToolFinding(
+                tool_name=tool_name,
+                adapter="bandit",
+                rule_id=str(item.get("test_id") or item.get("test_name") or ""),
+                message=str(item.get("issue_text") or item.get("message") or ""),
+                file_path=file_path.replace("\\", "/"),
+                start_line=start_line,
+                end_line=end_line,
+                severity=severity.lower(),
+                metadata={
+                    key: value
+                    for key, value in {
+                        "test_name": item.get("test_name"),
+                        "issue_confidence": item.get("issue_confidence"),
+                        "more_info": item.get("more_info"),
+                    }.items()
+                    if value is not None
+                },
+            )
+        )
+    return tuple(findings)
+
+
+def parse_pip_audit_json(*, tool_name: str, payload: str) -> tuple[ToolFinding, ...]:
+    """Parse ``pip-audit --format json`` dependency vulnerability results.
+
+    pip-audit reports package-level issues (not source lines). Findings are mapped
+    to synthetic paths ``dependencies/<package>`` at line 1 so they still flow
+    through VeriSec tool-finding plumbing and reports.
+    """
+    if not payload.strip():
+        return ()
+    try:
+        data = json.loads(payload)
+    except json.JSONDecodeError:
+        return ()
+
+    dependencies = _pip_audit_dependencies(data)
+    findings: list[ToolFinding] = []
+    for dep in dependencies:
+        name = str(dep.get("name") or dep.get("package") or "").strip()
+        version = str(dep.get("version") or dep.get("installed_version") or "").strip()
+        if not name:
+            continue
+        vulns = dep.get("vulns") or dep.get("vulnerabilities") or []
+        if not isinstance(vulns, list):
+            continue
+        for vuln in vulns:
+            if not isinstance(vuln, dict):
+                continue
+            vuln_id = str(
+                vuln.get("id")
+                or vuln.get("advisory")
+                or (vuln.get("aliases") or ["unknown"])[0]
+            )
+            aliases = vuln.get("aliases") or []
+            if not isinstance(aliases, list):
+                aliases = []
+            fix_versions = vuln.get("fix_versions") or vuln.get("fixed_versions") or []
+            if not isinstance(fix_versions, list):
+                fix_versions = []
+            description = str(vuln.get("description") or vuln.get("summary") or "")
+            package_label = f"{name}=={version}" if version else name
+            message = description or f"Vulnerable dependency {package_label}"
+            if fix_versions:
+                message = f"{message} (fix: {', '.join(str(v) for v in fix_versions)})"
+            findings.append(
+                ToolFinding(
+                    tool_name=tool_name,
+                    adapter="pip-audit",
+                    rule_id=vuln_id,
+                    message=message,
+                    file_path=f"dependencies/{name}",
+                    start_line=1,
+                    end_line=1,
+                    severity="high" if fix_versions else "medium",
+                    metadata={
+                        key: value
+                        for key, value in {
+                            "package": name,
+                            "version": version,
+                            "aliases": aliases,
+                            "fix_versions": fix_versions,
+                        }.items()
+                        if value not in (None, "", [])
+                    },
+                )
+            )
+    return tuple(findings)
+
+
+def _pip_audit_dependencies(data: Any) -> list[dict[str, Any]]:
+    if isinstance(data, list):
+        return [item for item in data if isinstance(item, dict)]
+    if isinstance(data, dict):
+        for key in ("dependencies", "packages", "results"):
+            value = data.get(key)
+            if isinstance(value, list):
+                return [item for item in value if isinstance(item, dict)]
+    return []
 
 
 def parse_semgrep_json(*, tool_name: str, payload: str) -> tuple[ToolFinding, ...]:

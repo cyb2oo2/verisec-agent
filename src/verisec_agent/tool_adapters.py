@@ -136,22 +136,29 @@ BUILTIN_ADAPTERS: dict[str, ToolAdapter] = {
 
 
 def list_builtin_adapters() -> tuple[DiscoveredToolAdapter, ...]:
-    return tuple(adapter.with_availability() for adapter in BUILTIN_ADAPTERS.values())
+    from verisec_agent.adapters_api import get_adapter_registry
+
+    registry = get_adapter_registry()
+    adapters = registry.as_tool_adapters()
+    return tuple(adapter.with_availability() for adapter in adapters.values())
 
 
 def resolve_adapter(item: dict[str, Any]) -> VerificationCommand:
-    adapter_id = str(item.get("id", item.get("adapter", "")))
-    if adapter_id not in BUILTIN_ADAPTERS:
-        known = ", ".join(sorted(BUILTIN_ADAPTERS))
-        raise ValueError(f"Unknown verification adapter '{adapter_id}'. Known adapters: {known}.")
-    return BUILTIN_ADAPTERS[adapter_id].to_command(item)
+    from verisec_agent.adapters_api import get_adapter_registry
+
+    return get_adapter_registry().resolve(item)
 
 
 def enrich_custom_command(item: dict[str, Any]) -> VerificationCommand:
+    from verisec_agent.adapters_api import get_adapter_registry
+
     capabilities = item.get("capabilities", ())
     adapter = str(item.get("adapter", "custom"))
     command = str(item.get("command") or _display_argv(_command_argv(item)))
-    adapter_template = BUILTIN_ADAPTERS.get(adapter)
+    registry = get_adapter_registry()
+    adapter_template = registry.as_tool_adapters().get(adapter) or BUILTIN_ADAPTERS.get(
+        adapter
+    )
     if adapter_template is not None:
         base = adapter_template.to_command(item)
         return replace(

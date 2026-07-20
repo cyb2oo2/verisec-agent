@@ -8,7 +8,7 @@ from pathlib import Path
 from typing import Literal
 
 from verisec_agent.models import VerificationCommand
-from verisec_agent.tool_adapters import BUILTIN_ADAPTERS
+from verisec_agent.tool_adapters import BUILTIN_ADAPTERS, ToolAdapter
 
 PolicyStatus = Literal["allowed", "blocked"]
 PolicyProfile = Literal["trusted-local", "trusted-ci", "untrusted-fork-pr"]
@@ -130,7 +130,7 @@ def evaluate_verification_command(
     if policy.network_access not in {"inherit", "disabled"}:
         reasons.append("network_access must be one of: inherit, disabled")
 
-    adapter_status = BUILTIN_ADAPTERS.get(command.adapter)
+    adapter_status = _lookup_adapter(command.adapter)
     if adapter_status is not None and adapter_status.executable is not None:
         availability = adapter_status.with_availability()
         if not availability.available:
@@ -216,6 +216,19 @@ def apply_policy_profile(
         )
     known = ", ".join(POLICY_PROFILES)
     raise ValueError(f"unknown policy profile '{profile}'. Known profiles: {known}")
+
+
+def _lookup_adapter(adapter_id: str) -> ToolAdapter | None:
+    try:
+        from verisec_agent.adapters_api import get_adapter_registry
+
+        registry = get_adapter_registry()
+        adapters = registry.as_tool_adapters()
+        if adapter_id in adapters:
+            return adapters[adapter_id]
+    except Exception:
+        pass
+    return BUILTIN_ADAPTERS.get(adapter_id)
 
 
 def _normalize_command(command: str) -> str:

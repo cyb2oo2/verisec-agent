@@ -1,0 +1,29 @@
+# External pip-audit adapter (dependency vulnerability scan).
+# Enable from verisec.toml:
+#
+# [adapters]
+# paths = ["adapters/bandit.toml", "adapters/pip-audit.toml"]
+#
+# [[verification.adapters]]
+# id = "pip-audit"
+# required = false
+#
+# And allow the adapter/executable in [policy].
+# Install: pip install pip-audit
+
+id = "pip-audit"
+name = "pip-audit"
+description = "Audit installed/declared Python dependencies for known vulnerabilities (JSON)."
+# Runs in the reviewed repo cwd. Prefer local environment / requirements when present.
+command = "pip-audit --format json --progress-spinner off"
+executable = "pip-audit"
+parser = "pip-audit-json"
+timeout_seconds = 180
+required = false
+capabilities = [
+  "pip-audit",
+  "dependency-audit",
+  "sca",
+  "static-analysis",
+  "python-security",
+]

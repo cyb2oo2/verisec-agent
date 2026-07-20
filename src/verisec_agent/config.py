@@ -4,6 +4,7 @@ import tomllib
 from dataclasses import dataclass
 from pathlib import Path
 
+from verisec_agent.adapters_api import load_adapter_registry, set_adapter_registry
 from verisec_agent.models import VerificationCommand
 from verisec_agent.policy import ReviewPolicy, apply_policy_profile, profile_default_policy
 from verisec_agent.tool_adapters import enrich_custom_command, resolve_adapter
@@ -16,10 +17,13 @@ class ReviewConfig:
     min_confidence: float = 0.35
     verification_commands: tuple[VerificationCommand, ...] = ()
     policy: ReviewPolicy = ReviewPolicy()
+    rule_packs: tuple[str, ...] = ("builtin",)
+    adapter_paths: tuple[Path, ...] = ()
 
 
 def load_config(path: Path | None, *, policy_profile: str | None = None) -> ReviewConfig:
     if path is None or not path.exists():
+        set_adapter_registry(load_adapter_registry())
         return ReviewConfig(
             policy=apply_policy_profile(
                 ReviewPolicy(),
@@ -27,10 +31,26 @@ def load_config(path: Path | None, *, policy_profile: str | None = None) -> Revi
             )
         )
 
+    config_dir = path.parent.resolve()
     data = tomllib.loads(path.read_text(encoding="utf-8"))
     review = data.get("review", {})
     verification = data.get("verification", {})
     policy = data.get("policy", {})
+    rules_section = data.get("rules", {})
+    adapters_section = data.get("adapters", {})
+
+    rule_packs = tuple(
+        str(item) for item in rules_section.get("packs", ["builtin"])
+    ) or ("builtin",)
+    adapter_paths = tuple(
+        Path(str(item)) for item in adapters_section.get("paths", [])
+    )
+    registry = load_adapter_registry(
+        adapter_paths=adapter_paths,
+        config_dir=config_dir,
+    )
+    set_adapter_registry(registry)
+
     adapter_commands = tuple(
         resolve_adapter(item)
         for item in verification.get("adapters", [])
@@ -45,6 +65,11 @@ def load_config(path: Path | None, *, policy_profile: str | None = None) -> Revi
         min_confidence=float(review.get("min_confidence", 0.35)),
         verification_commands=adapter_commands + custom_commands,
         policy=_load_policy(policy, policy_profile=policy_profile),
+        rule_packs=rule_packs,
+        adapter_paths=tuple(
+            (config_dir / path).resolve() if not path.is_absolute() else path.resolve()
+            for path in adapter_paths
+        ),
     )
 
 
