@@ -17,6 +17,7 @@ from verisec_agent.gate import GateError, GateThresholds, run_gate
 from verisec_agent.github_comment import GitHubCommentError, publish_pr_comment
 from verisec_agent.inputs import DiffInputError, resolve_diff_input
 from verisec_agent.integrity import IntegrityError, attest_artifact_index
+from verisec_agent.operator import format_init_summary, format_review_summary, init_project
 from verisec_agent.partition_audit import PartitionAuditError, run_partition_audit
 from verisec_agent.policy import POLICY_PROFILES
 from verisec_agent.portfolio import PortfolioError, run_portfolio
@@ -26,12 +27,59 @@ from verisec_agent.scanner_baseline import ScannerBaselineError, run_scanner_bas
 from verisec_agent.scanner_execution import ScannerExecutionError, run_scanner_execution
 from verisec_agent.tool_adapters import list_builtin_adapters
 
+_CLI_EPILOG = """
+Command surfaces
+  Operator (day-to-day review):
+    init, review, replay, tools, pr-comment, github-comment
+  CI:
+    gate, attest
+  Lab / benchmarks (maintainers & research):
+    eval, case-audit, case-promote, partition-audit, failure-analysis,
+    scanner-baseline, scanner-run, dashboard, portfolio
+
+Happy path
+  python -m verisec_agent init
+  python -m verisec_agent review --diff examples/demo.diff --repo . --out verisec-runs/demo
+  open verisec-runs/demo/report.md
+
+Docs: docs/OPERATOR.md (operators) · docs/ARCHITECTURE.md (maintainers)
+""".strip()
+
 
 def build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(prog="verisec", description="VeriSec Agent CLI")
+    parser = argparse.ArgumentParser(
+        prog="verisec",
+        description=(
+            "VeriSec Agent — evidence-grounded security patch review for Python diffs "
+            "and PRs (deterministic; no LLM required)."
+        ),
+        epilog=_CLI_EPILOG,
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
     subparsers = parser.add_subparsers(dest="command", required=True)
 
-    review = subparsers.add_parser("review", help="Review a diff source")
+    init = subparsers.add_parser(
+        "init",
+        help="[operator] Write a starter verisec.toml for local reviews",
+    )
+    init.add_argument(
+        "--dir",
+        default=Path("."),
+        type=Path,
+        help="Project directory (default: current directory)",
+    )
+    init.add_argument(
+        "--force",
+        action="store_true",
+        help="Overwrite an existing verisec.toml",
+    )
+    init.add_argument("--json", action="store_true", help="Print JSON init result")
+
+    review = subparsers.add_parser(
+        "review",
+        help="[operator] Review a diff, PR, or patch URL (primary happy path)",
+        aliases=["r"],
+    )
     source = review.add_mutually_exclusive_group(required=True)
     source.add_argument("--diff", type=Path, help="Path to a unified diff")
     source.add_argument("--pr", help="GitHub PR number, URL, or branch for gh pr diff")
@@ -52,18 +100,27 @@ def build_parser() -> argparse.ArgumentParser:
     )
     review.add_argument("--json", action="store_true", help="Print full JSON report")
 
-    replay = subparsers.add_parser("replay", help="Replay verification commands from a bundle")
+    replay = subparsers.add_parser(
+        "replay",
+        help="[operator] Replay verification commands from a bundle",
+    )
     replay.add_argument("--bundle", required=True, type=Path, help="Existing VeriSec bundle")
     replay.add_argument("--repo", default=Path("."), type=Path, help="Repository root")
     replay.add_argument("--out", type=Path, help="Replay output dir")
     replay.add_argument("--json", action="store_true", help="Print full JSON replay summary")
 
-    tools = subparsers.add_parser("tools", help="List verification tool adapters")
+    tools = subparsers.add_parser(
+        "tools",
+        help="[operator] List verification tool adapters",
+    )
     tools.add_argument("--config", default=Path("verisec.toml"), type=Path, help="Config TOML")
     tools.add_argument("--policy-profile", choices=POLICY_PROFILES, help="Execution policy profile")
     tools.add_argument("--json", action="store_true", help="Print JSON tool metadata")
 
-    evaluate = subparsers.add_parser("eval", help="Run a batch evaluation manifest")
+    evaluate = subparsers.add_parser(
+        "eval",
+        help="[lab] Run a batch evaluation manifest",
+    )
     evaluate.add_argument("--cases", required=True, type=Path, help="Evaluation cases JSON")
     evaluate.add_argument("--out", required=True, type=Path, help="Evaluation output dir")
     evaluate.add_argument("--config", type=Path, help="Default config TOML for cases")
@@ -82,7 +139,7 @@ def build_parser() -> argparse.ArgumentParser:
 
     case_audit = subparsers.add_parser(
         "case-audit",
-        help="Audit evaluation case manifests for benchmark-readiness",
+        help="[lab] Audit evaluation case manifests for benchmark-readiness",
     )
     case_audit.add_argument("--cases", required=True, type=Path, help="Evaluation cases JSON")
     case_audit.add_argument("--out", type=Path, help="Optional audit output dir")
@@ -100,7 +157,7 @@ def build_parser() -> argparse.ArgumentParser:
 
     case_promote = subparsers.add_parser(
         "case-promote",
-        help="Plan measured benchmark promotion for candidate CVE/PR cases",
+        help="[lab] Plan measured benchmark promotion for candidate CVE/PR cases",
     )
     case_promote.add_argument("--candidates", required=True, type=Path)
     case_promote.add_argument("--out", type=Path, help="Optional promotion-plan output dir")
@@ -133,7 +190,7 @@ def build_parser() -> argparse.ArgumentParser:
 
     partition_audit = subparsers.add_parser(
         "partition-audit",
-        help="Check a benchmark partition for leakage against reference manifests",
+        help="[lab] Check a benchmark partition for leakage against reference manifests",
     )
     partition_audit.add_argument("--cases", required=True, type=Path)
     partition_audit.add_argument(
@@ -153,7 +210,7 @@ def build_parser() -> argparse.ArgumentParser:
 
     failure_analysis = subparsers.add_parser(
         "failure-analysis",
-        help="Classify missed and unexpected findings in an evaluation artifact",
+        help="[lab] Classify missed and unexpected findings in an evaluation artifact",
     )
     failure_analysis.add_argument("--evaluation", required=True, type=Path)
     failure_analysis.add_argument("--out", type=Path, help="Optional analysis output dir")
@@ -161,7 +218,7 @@ def build_parser() -> argparse.ArgumentParser:
 
     scanner_baseline = subparsers.add_parser(
         "scanner-baseline",
-        help="Evaluate structured scanner output against VeriSec cases",
+        help="[lab] Evaluate structured scanner output against VeriSec cases",
     )
     scanner_baseline.add_argument("--cases", required=True, type=Path, help="Evaluation cases JSON")
     scanner_baseline.add_argument(
@@ -178,7 +235,7 @@ def build_parser() -> argparse.ArgumentParser:
 
     scanner_run = subparsers.add_parser(
         "scanner-run",
-        help="Run a scanner over evaluation cases and capture baseline artifacts",
+        help="[lab] Run a scanner over evaluation cases and capture baseline artifacts",
     )
     scanner_run.add_argument("--cases", required=True, type=Path, help="Evaluation cases JSON")
     scanner_run.add_argument("--out", required=True, type=Path, help="Scanner artifact output dir")
@@ -215,7 +272,10 @@ def build_parser() -> argparse.ArgumentParser:
     scanner_run.add_argument("--fail-fast", action="store_true", help="Stop on first error")
     scanner_run.add_argument("--json", action="store_true", help="Print full JSON result")
 
-    gate = subparsers.add_parser("gate", help="Apply CI thresholds to a report or evaluation")
+    gate = subparsers.add_parser(
+        "gate",
+        help="[ci] Apply CI thresholds to a report or evaluation",
+    )
     gate_source = gate.add_mutually_exclusive_group(required=True)
     gate_source.add_argument("--report", type=Path, help="Path to a VeriSec report.json")
     gate_source.add_argument("--evaluation", type=Path, help="Path to a VeriSec evaluation.json")
@@ -244,7 +304,7 @@ def build_parser() -> argparse.ArgumentParser:
 
     dashboard = subparsers.add_parser(
         "dashboard",
-        help="Build a regression dashboard from one or more evaluations",
+        help="[lab] Build a regression dashboard from one or more evaluations",
     )
     dashboard.add_argument(
         "--evaluation",
@@ -274,7 +334,7 @@ def build_parser() -> argparse.ArgumentParser:
 
     portfolio = subparsers.add_parser(
         "portfolio",
-        help="Run a portfolio manifest through eval, gate, and dashboard",
+        help="[lab] Run a portfolio manifest through eval, gate, and dashboard",
     )
     portfolio.add_argument("--manifest", required=True, type=Path, help="Portfolio JSON path")
     portfolio.add_argument("--out", required=True, type=Path, help="Portfolio output dir")
@@ -293,7 +353,7 @@ def build_parser() -> argparse.ArgumentParser:
 
     attest = subparsers.add_parser(
         "attest",
-        help="Verify artifacts against an artifact_index.json",
+        help="[ci] Verify artifacts against an artifact_index.json",
     )
     attest.add_argument("--index", required=True, type=Path, help="Artifact index JSON path")
     attest.add_argument("--root", type=Path, help="Override artifact root directory")
@@ -307,7 +367,7 @@ def build_parser() -> argparse.ArgumentParser:
 
     pr_comment = subparsers.add_parser(
         "pr-comment",
-        help="Render a GitHub PR comment from a report or evaluation",
+        help="[operator] Render a GitHub PR comment from a report or evaluation",
     )
     pr_source = pr_comment.add_mutually_exclusive_group(required=True)
     pr_source.add_argument("--report", type=Path, help="Path to a VeriSec report.json")
@@ -318,7 +378,7 @@ def build_parser() -> argparse.ArgumentParser:
 
     github_comment = subparsers.add_parser(
         "github-comment",
-        help="Create or update a GitHub PR comment from a rendered Markdown body",
+        help="[operator] Create or update a GitHub PR comment from a rendered Markdown body",
     )
     github_comment.add_argument("--body", required=True, type=Path, help="Markdown body path")
     github_comment.add_argument("--repo", help="GitHub repository as owner/repo")
@@ -340,11 +400,27 @@ def build_parser() -> argparse.ArgumentParser:
     return parser
 
 
+_COMMAND_ALIASES = {
+    "r": "review",
+}
+
+
 def main(argv: list[str] | None = None) -> None:
     parser = build_parser()
     args = parser.parse_args(argv)
+    # argparse stores the invoked name for aliases (e.g. "r"); normalize to primary.
+    command = _COMMAND_ALIASES.get(args.command, args.command)
+    args.command = command
 
-    if args.command == "review":
+    if command == "init":
+        result = init_project(target_dir=args.dir, force=args.force)
+        if args.json:
+            print(json.dumps(result, indent=2, sort_keys=True))
+        else:
+            print(format_init_summary(result), end="")
+        return
+
+    if command == "review":
         config = load_config(args.config, policy_profile=args.policy_profile)
         agent = ReviewAgent(config)
         output_dir = args.out.resolve()
@@ -368,12 +444,8 @@ def main(argv: list[str] | None = None) -> None:
         if args.json:
             print(json.dumps(report.to_dict(), indent=2, sort_keys=True))
         else:
-            summary = report.summary
-            print(
-                f"VeriSec review complete: {summary['finding_count']} finding(s), "
-                f"{summary['verification_passed']}/{summary['verification_count']} checks passed."
-            )
-            print(f"Bundle: {report.bundle_path}")
+            print(format_review_summary(report), end="")
+        return
 
     if args.command == "replay":
         try:
