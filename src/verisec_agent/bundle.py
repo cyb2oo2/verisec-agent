@@ -7,6 +7,7 @@ from typing import Any
 
 from verisec_agent.models import ReviewReport
 from verisec_agent.reporting import render_markdown_report
+from verisec_agent.sarif import write_sarif_report
 
 
 class BundleWriter:
@@ -28,6 +29,7 @@ class BundleWriter:
         report.write_json(target)
         markdown_target = self.bundle_dir / "report.md"
         markdown_target.write_text(render_markdown_report(report), encoding="utf-8")
+        write_sarif_report(report, self.bundle_dir / "report.sarif")
         return target
 
     def write_source_metadata(self, source: dict[str, Any]) -> Path:
