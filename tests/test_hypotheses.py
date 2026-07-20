@@ -437,3 +437,65 @@ def test_generate_hypotheses_ignores_weak_hash_in_string_literals() -> None:
     )
 
     assert findings == ()
+
+
+def test_single_line_string_literal_shell_true_is_not_flagged() -> None:
+    diff = '''diff --git a/docs_sample.py b/docs_sample.py
+--- a/docs_sample.py
++++ b/docs_sample.py
+@@ -1,2 +1,3 @@
+ def doc():
++    return "subprocess.run(user_input, shell=True)"
+'''
+
+    findings = generate_hypotheses(
+        evidence_windows(parse_unified_diff(diff)),
+        min_confidence=0.35,
+    )
+
+    assert not any(finding.rule_id == "py-shell-true" for finding in findings)
+
+
+def test_triple_quoted_code_sample_shell_true_is_not_flagged() -> None:
+    """Multi-line samples inside triple quotes are string data, not call sites.
+
+    Each embedded line reads as bare source, so line-oriented literal detection
+    misses it. Regression guard for the self-review false positives.
+    """
+    diff = '''diff --git a/docs_sample.py b/docs_sample.py
+--- a/docs_sample.py
++++ b/docs_sample.py
+@@ -1,2 +1,7 @@
+ def fixture():
++    source = """
++import subprocess
++def run(user_input):
++    return subprocess.run(user_input, shell=True)
++"""
+'''
+
+    findings = generate_hypotheses(
+        evidence_windows(parse_unified_diff(diff)),
+        min_confidence=0.35,
+    )
+
+    assert not any(finding.rule_id == "py-shell-true" for finding in findings)
+
+
+def test_real_shell_true_call_is_still_flagged() -> None:
+    """Guard against fixing the false positive by weakening detection."""
+    diff = '''diff --git a/app.py b/app.py
+--- a/app.py
++++ b/app.py
+@@ -1,2 +1,3 @@
+ import subprocess
+ def run(user_input):
++    return subprocess.run(user_input, shell=True)
+'''
+
+    findings = generate_hypotheses(
+        evidence_windows(parse_unified_diff(diff)),
+        min_confidence=0.35,
+    )
+
+    assert any(finding.rule_id == "py-shell-true" for finding in findings)

@@ -39,6 +39,25 @@
       "tags": ["negative-control", "python", "docs"]
     },
     {
+      "id": "negative-shell-triple-quoted",
+      "diff": "negative_controls/shell_true_triple_quoted.diff",
+      "repo": "..",
+      "metadata": {
+        "project": "verisec/negative-controls",
+        "language": "python",
+        "vulnerability_class": "documented-dangerous-pattern"
+      },
+      "expected_findings": [
+        {
+          "rule_id": "py-shell-true",
+          "file_path": "examples/negative_controls.py",
+          "role": "negative-control",
+          "notes": "Dangerous shell=True appears only inside a triple-quoted code sample."
+        }
+      ],
+      "tags": ["negative-control", "python", "docs"]
+    },
+    {
       "id": "negative-tls-verify-true",
       "diff": "negative_controls/tls_verify_true.diff",
       "repo": "..",

@@ -30,6 +30,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 - README restructured for operator-first onboarding; lab commands deferred
 - ReDoS regex fallback no longer treats bare `max_length` / length bounds as ReDoS
 
+### Fixed
+
+- Regex fallback no longer reports code samples embedded in multi-line strings as
+  real call sites. String spans are resolved from the checked-out file when
+  available, so a triple-quoted sample cut short by an evidence window is still
+  recognized as string data. Semantic (AST/dataflow) detection is unchanged.
+- New negative control `negative-shell-triple-quoted` covering the triple-quoted
+  case; the existing docs control only covered single-line literals.
+
 ## [0.1.0] - 2026-06-10
 
 ### Added

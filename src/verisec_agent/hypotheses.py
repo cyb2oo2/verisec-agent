@@ -348,6 +348,7 @@ def generate_hypotheses(
 
     # File-scope matches attach to exactly one best window per (file, rule).
     file_matches = _file_level_matches(windows, repo_path=repo_path, registry=registry)
+    file_string_line_cache: dict[str, frozenset[int]] = {}
     file_match_by_window: dict[int, list[SemanticMatch]] = defaultdict(list)
     for file_path, matches in file_matches.items():
         file_windows = windows_by_file.get(file_path, [])
@@ -388,8 +389,13 @@ def generate_hypotheses(
                 window_families.add(family)
             hypotheses.append(_build_hypothesis(rule, window, match=match, confidence=confidence))
 
+        string_lines = _file_string_lines(
+            repo_path, window.file_path, cache=file_string_line_cache
+        )
         added_text = "\n".join(
-            line.content for line in window.lines if line.change_type == "add"
+            line.content
+            for line in window.lines
+            if line.change_type == "add" and line.new_line not in string_lines
         )
         deleted_text = "\n".join(
             line.content for line in window.lines if line.change_type == "delete"
@@ -618,10 +624,92 @@ def _scan_text_for_rule(rule: Rule, text: str) -> str:
 
 
 def _strip_python_comments(text: str, *, preserve_strings: bool) -> str:
+    masked = frozenset() if preserve_strings else _multiline_string_lines(text)
     return "\n".join(
-        _strip_python_line(line, preserve_strings=preserve_strings)
-        for line in text.splitlines()
+        "" if number in masked else _strip_python_line(line, preserve_strings=preserve_strings)
+        for number, line in enumerate(text.splitlines(), start=1)
     )
+
+
+def _multiline_string_lines(text: str) -> frozenset[int]:
+    """Line numbers spanned by multi-line string tokens.
+
+    Per-line tokenization cannot see these: tokenizing a single line of a
+    triple-quoted block raises TokenError for the unterminated string, so the
+    line falls through unstripped and its contents read as executable code.
+    Masking is line-preserving so evidence-window line mapping is unaffected.
+    """
+    try:
+        tokens = list(tokenize.generate_tokens(io.StringIO(text).readline))
+    except (IndentationError, SyntaxError, tokenize.TokenError):
+        return _unterminated_triple_quote_lines(text)
+    return frozenset(
+        number
+        for token in tokens
+        if token.type == tokenize.STRING and token.end[0] > token.start[0]
+        for number in range(token.start[0], token.end[0] + 1)
+    )
+
+
+def _file_string_lines(
+    repo_path: Path | None,
+    file_path: str,
+    *,
+    cache: dict[str, frozenset[int]],
+) -> frozenset[int]:
+    """Line numbers inside multi-line strings in the checked-out file.
+
+    An evidence window is a bounded diff excerpt, so it routinely cuts a
+    triple-quoted code sample and cannot show on its own whether a line is string
+    data or a real call site. The checkout is the patched revision, so added-line
+    numbers index directly into it and give ground truth instead of delimiter
+    guesswork. Real call sites are never inside a string span, so this suppresses
+    embedded samples without weakening detection.
+
+    Returns an empty set when no checkout is available, leaving the window-local
+    heuristics as the only defence.
+    """
+    if repo_path is None:
+        return frozenset()
+    if file_path in cache:
+        return cache[file_path]
+
+    lines: frozenset[int] = frozenset()
+    root = repo_path.resolve()
+    target = (root / file_path).resolve()
+    try:
+        target.relative_to(root)
+        source = target.read_text(encoding="utf-8")
+    except (OSError, UnicodeDecodeError, ValueError):
+        pass
+    else:
+        lines = _multiline_string_lines(source)
+    cache[file_path] = lines
+    return lines
+
+
+def _unterminated_triple_quote_lines(text: str) -> frozenset[int]:
+    """Lines following a triple-quote opener that the fragment never closes.
+
+    Evidence windows are bounded diff excerpts, so a triple-quoted code sample is
+    routinely cut before its closing delimiter and tokenize cannot parse it. Only
+    an opener carrying real code before the quote on the same line (``return '''``,
+    ``source = \"\"\"``) starts masking, so a window that merely begins inside a
+    string is left untouched rather than over-suppressed.
+    """
+    lines = text.splitlines()
+    for number, line in enumerate(lines, start=1):
+        for quote in ('"""', "'''"):
+            index = line.find(quote)
+            if index == -1 or line.count(quote) > 1:
+                continue
+            prefix = line[:index].strip()
+            if not prefix or prefix.startswith("#"):
+                continue
+            if any(quote in later for later in lines[number:]):
+                continue
+            return frozenset(range(number, len(lines) + 1))
+    return frozenset()
 
 
 def _strip_python_line(line: str, *, preserve_strings: bool) -> str:

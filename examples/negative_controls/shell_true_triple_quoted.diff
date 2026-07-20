@@ -1,0 +1,15 @@
+diff --git a/examples/negative_controls.py b/examples/negative_controls.py
+--- a/examples/negative_controls.py
++++ b/examples/negative_controls.py
+@@ -19,3 +19,14 @@
++def document_forbidden_shell_sample() -> str:
++    # Multi-line code samples embedded in triple-quoted strings are data, not
++    # executable code. Each line reads as bare source, so line-oriented literal
++    # detection must not treat them as real call sites.
++    return '''
++import subprocess
++
++def run(user_input):
++    return subprocess.run(user_input, shell=True)
++'''
++
