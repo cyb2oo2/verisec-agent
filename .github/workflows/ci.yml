@@ -157,7 +157,10 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
-      issues: write
+      # PR conversation comments are served by the issues API but the resource is
+      # a pull request, so pull-requests: write is what authorizes them.
+      # issues: write alone returns 403 on /issues/{n}/comments for a PR.
+      pull-requests: write
     steps:
       - uses: actions/download-artifact@v4
         with:
