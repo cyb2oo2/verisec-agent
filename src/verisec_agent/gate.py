@@ -210,12 +210,17 @@ def _evaluate_thresholds(metrics: dict[str, Any], thresholds: GateThresholds) ->
         metrics["tool_evidence_rate"],
         thresholds.min_tool_evidence_rate,
     )
-    _check_min(
-        failures,
-        "average confidence",
-        metrics["avg_confidence"],
-        thresholds.min_avg_confidence,
-    )
+    # A review with no findings has nothing to be confident about, and the mean of
+    # an empty set is reported as 0.0. Asserting a floor on it would fail exactly
+    # the reviews that found nothing wrong, so the check is vacuous here - matching
+    # how _coverage_rate already treats an empty validation plan.
+    if metrics["finding_count"]:
+        _check_min(
+            failures,
+            "average confidence",
+            metrics["avg_confidence"],
+            thresholds.min_avg_confidence,
+        )
     _check_min(
         failures,
         "accepted finding rate",
