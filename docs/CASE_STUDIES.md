@@ -161,8 +161,8 @@ that appear only in comments or string literals.
 
 Current local result:
 
-- Case audit: 10/10 ready, 0 blocked, 0 warnings.
-- Cases: 10
+- Case audit: 11/11 ready, 0 blocked, 0 warnings.
+- Cases: 11
 - Findings: 1
 - Benign findings: 1
 - Accepted finding rate: 1.00

@@ -66,8 +66,8 @@ repositories. Snapshot from
 
 | System | Positive Cases | Negative Controls | Primary Recall | Primary Precision | Findings | Raw Tool Findings | Out Scope | Validation | Tool Evidence | Neg Ctrl Violations |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
-| VeriSec Agent | 3 OSS CVE/PR cases | 10 adversarial controls | 1.00 | 0.50 | 8 | 8 | 0 | 1.00 | 1.00 | 0 |
-| VeriSec Agent promoted CVEs | 7 promoted CVE cases | 10 adversarial controls | 1.00 | 0.69 | 13 | 13 | 0 | 1.00 | 1.00 | 0 |
+| VeriSec Agent | 3 OSS CVE/PR cases | 11 adversarial controls | 1.00 | 0.50 | 8 | 8 | 0 | 1.00 | 1.00 | 0 |
+| VeriSec Agent promoted CVEs | 6 promoted CVE cases | 11 adversarial controls | 1.00 | 0.64 | 11 | 11 | 0 | 1.00 | 1.00 | 0 |
 | Semgrep baseline | 3 OSS CVE/PR cases | 10 isolated scanner controls | 0.00 | 0.00 | 0 | 2 | 2 | 1.00 | 0.00 | 0 |
 | CodeQL baseline | 3 OSS CVE/PR cases | 10 isolated scanner controls | 0.00 | 0.00 | 0 | 10 | 10 | 1.00 | 0.00 | 0 |
 
@@ -254,9 +254,9 @@ python -m verisec_agent case-audit `
 ```
 
 The current OSS seed audit is 3/3 ready with zero warnings. The negative-control
-suite is 10/10 ready with zero warnings. The candidate CVE intake queue in
+suite is 11/11 ready with zero warnings. The candidate CVE intake queue in
 `examples/candidate_cases.json` is audit-only: 9 cases have reproducible source
-metadata and advisory labels, 7 are already promoted, and the remaining 2 are
+metadata and advisory labels, 6 are already promoted, and the remaining 3 are
 blocked from measured promotion until they receive verification configs and
 evaluation evidence.
 

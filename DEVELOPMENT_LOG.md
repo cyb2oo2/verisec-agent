@@ -23,6 +23,50 @@ from the code.
 
 ---
 
+## D-010 — django-cve-2023-36053 demoted; benchmark snapshot regenerated
+**Date:** 2026-07-21 · **Status:** accepted
+
+**Context:** The release portfolio failed on `promoted-cves: primary finding recall 0.86
+below 1.00`. Bisecting every commit where the case exists — `5b48402`, `d9754d0`,
+`cd7518e`, and current — gave an identical 0.8571. The case was never detected; there is
+no regression point. Meanwhile `docs/release_benchmark_matrix.json` published
+`primary_recall: 1.0` over 7 cases with `status: measured`, and `README.md` mirrored it.
+That figure did not reproduce from any commit in this repository, including the one where
+the snapshot was written.
+
+Root cause: the case expects `py-regex-redos-hardening`, a rule that fires on a regex
+pattern delta. CVE-2023-36053's actual fix changes no regex — it adds length guards
+(`max_length = 2048`, `len(value) > 320`). The label does not match the patch, so no
+version of this detector could satisfy it. `CHANGELOG.md` separately records a deliberate
+decision that bare length bounds are not ReDoS findings, which points the same way.
+
+**Decision:** Remove the case from `examples/promoted_candidate_cases.json`. It remains in
+`examples/candidate_cases.json` tagged `candidate`, so it stays visible in the audit-only
+queue without counting as measured performance. Regenerate the benchmark snapshot from a
+passed, attested portfolio run and publish the artifacts verbatim.
+
+**Alternatives:** (a) Relabel the case to expect a length-guard hardening rule — rejected
+for now; no such rule exists for validator length bounds, and adding one collides with the
+recorded decision that bare length bounds are not ReDoS. Reasonable future work. (b)
+Publish 0.857 with the case retained — rejected because `case-promote` requires full
+expected-finding recall, so the case does not meet the project's own promotion criteria and
+should not be in a measured suite at all. Running `case-promote` after removal confirms it:
+6 promoted, 3 blocked, and this case is now correctly among the blocked.
+
+**Consequences:** promoted CVEs row moves from 7 cases / 1.00 recall / 0.69 precision to
+6 cases / 1.00 recall / 0.64 precision; findings 13 → 11. Negative controls 10 → 11 from
+the triple-quoted control added in D-008. `claim_boundaries` prose in both portfolio
+manifests is hand-maintained rather than derived, so it was corrected to match; a future
+change should consider deriving those counts. `docs/HOLDOUT_PILOT.md` still records "7
+promoted CVE cases" and was deliberately left alone — it describes the partition state at
+the `d9754d0` freeze, and editing it would falsify a historical audit record.
+
+The published snapshot was verified to reproduce byte-identically from an independent
+portfolio run. Recall remained 1.00 because the removed case was never detected, so no
+detection claim was weakened by this change — only its denominator corrected.
+
+---
+
 ## D-008 — String-literal suppression resolves spans from the file, not the window
 **Date:** 2026-07-21 · **Status:** accepted
 
