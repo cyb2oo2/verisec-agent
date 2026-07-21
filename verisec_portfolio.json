@@ -152,6 +152,16 @@
         "max_errors": 0,
         "max_policy_blocked": 0
       }
+    },
+    {
+      "label": "self-history-noise",
+      "cases": "examples/self_history_cases.json",
+      "fail_fast": false,
+      "gate": {
+        "max_findings": 22,
+        "max_errors": 0,
+        "max_policy_blocked": 0
+      }
     }
   ]
 }

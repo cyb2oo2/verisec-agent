@@ -4,6 +4,33 @@ from pathlib import Path
 from verisec_agent.gate import GateThresholds, run_gate
 
 
+def test_gate_max_findings_ratchets_total_count(tmp_path: Path) -> None:
+    """A noise corpus has no expected findings, so rate thresholds collapse to all-or-nothing.
+
+    `max_findings` is what lets a measured level be held without demanding zero.
+    """
+    report_path = tmp_path / "report.json"
+    report_path.write_text(
+        json.dumps({"summary": {"finding_count": 22, "severity_counts": {}}}),
+        encoding="utf-8",
+    )
+
+    at_ceiling = run_gate(
+        report_path=report_path,
+        thresholds=GateThresholds(max_findings=22),
+        output_dir=tmp_path / "at",
+    )
+    over_ceiling = run_gate(
+        report_path=report_path,
+        thresholds=GateThresholds(max_findings=21),
+        output_dir=tmp_path / "over",
+    )
+
+    assert at_ceiling["passed"] is True
+    assert over_ceiling["passed"] is False
+    assert any("findings" in failure for failure in over_ceiling["failures"])
+
+
 def test_gate_passes_report_when_thresholds_are_met(tmp_path: Path) -> None:
     report_path = tmp_path / "report.json"
     report_path.write_text(

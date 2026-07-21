@@ -295,6 +295,7 @@ def build_parser() -> argparse.ArgumentParser:
     gate.add_argument("--max-policy-blocked", default=0, type=int)
     gate.add_argument("--max-critical", type=int)
     gate.add_argument("--max-high", type=int)
+    gate.add_argument("--max-total-findings", type=int, dest="max_findings")
     gate.add_argument(
         "--github-step-summary",
         action="store_true",
@@ -701,6 +702,7 @@ def main(argv: list[str] | None = None) -> None:
             max_policy_blocked=args.max_policy_blocked,
             max_critical=args.max_critical,
             max_high=args.max_high,
+            max_findings=args.max_findings,
         )
         try:
             result = run_gate(
