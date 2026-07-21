@@ -23,6 +23,46 @@ from the code.
 
 ---
 
+## D-012 — Benchmark claim-boundary counts move to generated metadata
+**Date:** 2026-07-21 · **Status:** accepted
+
+**Context:** `claim_boundaries` in `verisec_portfolio.json` and
+`verisec_portfolio.nightly.json` is hand-maintained prose that embeds counts the system
+also computes: *"3 OSS seed cases, 6 promoted CVE cases, and N negative controls."* Those
+counts have now required manual correction twice — D-010 moved promoted 7 → 6 and controls
+10 → 11, and D-011's control moved 11 → 12. Between adding the control and correcting the
+prose, a regenerated snapshot carried `negative_controls: 12` directly beside a claim
+boundary reading "11 negative controls". Invariant 2 forbids hand-editing benchmark
+numbers, yet the current architecture *requires* hand-editing benchmark numbers in this
+one string. That is the invariant's weakest link, and nothing in CI detects it: the
+portfolio passed and attestation passed on 43 artifacts with the prose already stale.
+
+**Decision:** Two parts. Immediately, the publish procedure is ordered so the source is
+corrected before anything is generated — edit manifest prose → `portfolio` → `attest` →
+publish verbatim → diff an independent run for byte-identical reproduction. Directionally,
+claim-boundary counts move to generated metadata derived from the same computed metrics as
+the matrix rows, with a CI check asserting that regeneration produces no diff against the
+committed snapshot. The generated-metadata work is recorded here as the intended
+direction; it is not implemented in this change.
+
+**Alternatives:** (a) Drop the counts from the prose — rejected, the counts *are* the
+substance of the boundary; a disclaimer that does not say how small the benchmark is
+bounds nothing. (b) Hand-edit the generated artifacts to match the prose — rejected, that
+is precisely the prohibition in Invariant 2 and the failure mode D-010 was written about.
+(c) Implement generated metadata now — deferred rather than rejected. It changes the
+output contract of `portfolio.py` and `dashboard.py` and belongs in its own change under
+the one-concern-per-PR rule.
+
+**Consequences:** Until the counts are templated, any change to suite composition must
+correct prose in both manifests *before* regenerating, and a reviewer who checks only the
+numeric columns will miss prose drift. The freshness check is the durable half of the fix:
+it catches drift regardless of which surface introduced it, including README's
+hand-transcribed table, which is generated-derived but not generated. `docs/HOLDOUT_PILOT.md`
+stays exempt from all of this — it records the partition state at the `d9754d0` freeze, and
+regenerating it would falsify an audit record.
+
+---
+
 ## D-011 — Multi-line string masking stays scan_mode-independent
 **Date:** 2026-07-21 · **Status:** accepted
 

@@ -24,6 +24,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 - `docs/VALIDATION_EVIDENCE.md` and `examples/validation_evidence_stub.py`
 - Holdout post-fix measurement docs (`docs/HOLDOUT_POSTFIX.md`)
 - `CONTRIBUTING.md`, `SECURITY.md`
+- Negative control `negative-redos-triple-quoted` and paired unit tests covering
+  `scan_mode = "python-text"` rules. The existing triple-quoted control exercises
+  `shell=True`, a `python-code` rule, and could not reach them. The published
+  negative-control count moves 11 → 12 in the regenerated benchmark snapshot. This is
+  a coverage addition, not a detection improvement: no detector behavior changed, and
+  primary recall, precision, findings, and validation coverage are unchanged — only
+  the control denominator grew.
 
 ### Changed
 
