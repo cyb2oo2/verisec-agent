@@ -30,6 +30,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 - README restructured for operator-first onboarding; lab commands deferred
 - ReDoS regex fallback no longer treats bare `max_length` / length bounds as ReDoS
 
+### Removed
+
+- `django-cve-2023-36053` demoted from the promoted CVE suite. Its expected finding
+  is a regex pattern-delta rule, but the CVE's fix adds length guards and changes no
+  regex, so it was never detected at any commit. It stays in the audit-only candidate
+  queue. The published benchmark claimed 1.00 primary recall over 7 promoted cases;
+  that figure did not reproduce. Regenerated from a passed, attested portfolio run:
+  6 cases, 1.00 recall, 0.64 precision.
+
 ### Fixed
 
 - Regex fallback no longer reports code samples embedded in multi-line strings as
