@@ -16,4 +16,5 @@ tools/downloads/
 tools/codeql*/
 tools/shims/
 .semgrep-cache/
+.tmp/
 *.log

@@ -1,3 +1,5 @@
+from pathlib import Path
+
 from verisec_agent.diff_parser import evidence_windows, parse_unified_diff
 from verisec_agent.hypotheses import generate_hypotheses
 
@@ -499,3 +501,56 @@ def test_real_shell_true_call_is_still_flagged() -> None:
     )
 
     assert any(finding.rule_id == "py-shell-true" for finding in findings)
+
+
+def test_triple_quoted_code_sample_redos_is_not_flagged(tmp_path: Path) -> None:
+    """Multi-line string masking must cover scan_mode="python-text" rules too.
+
+    The shell=True guard above only exercises "python-code". Routing text rules
+    around the mask restores the embedded-sample false positive for all ten of
+    them while recovering no detection, so this pins the text side separately.
+    """
+    source = 'import re\n\n\ndef fixture():\n    return """\nTOKEN = re.compile(r"(a+)+$")\n"""\n'
+    (tmp_path / "docs_sample.py").write_text(source, encoding="utf-8")
+    diff = '''diff --git a/docs_sample.py b/docs_sample.py
+--- a/docs_sample.py
++++ b/docs_sample.py
+@@ -1,4 +1,7 @@
+ import re
+
+
+ def fixture():
++    return """
++TOKEN = re.compile(r"(a+)+$")
++"""
+'''
+
+    findings = generate_hypotheses(
+        evidence_windows(parse_unified_diff(diff)),
+        min_confidence=0.35,
+        repo_path=tmp_path,
+    )
+
+    assert not any(finding.rule_id == "py-regex-redos" for finding in findings)
+
+
+def test_real_redos_call_is_still_flagged(tmp_path: Path) -> None:
+    """Guard against suppressing the sample by weakening the text rules."""
+    source = 'import re\n\nTOKEN = re.compile(r"(a+)+$")\n'
+    (tmp_path / "app.py").write_text(source, encoding="utf-8")
+    diff = '''diff --git a/app.py b/app.py
+--- a/app.py
++++ b/app.py
+@@ -1,2 +1,3 @@
+ import re
+
++TOKEN = re.compile(r"(a+)+$")
+'''
+
+    findings = generate_hypotheses(
+        evidence_windows(parse_unified_diff(diff)),
+        min_confidence=0.35,
+        repo_path=tmp_path,
+    )
+
+    assert any(finding.rule_id == "py-regex-redos" for finding in findings)

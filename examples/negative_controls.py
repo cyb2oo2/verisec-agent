@@ -62,3 +62,14 @@ def parse_literal(value: str):
 
 def compile_bounded_slug() -> re.Pattern[str]:
     return re.compile(r"^[a-z0-9_-]{1,64}$")
+
+
+def document_forbidden_redos_sample() -> str:
+    # Counterpart to document_forbidden_shell_sample for "python-text" rules,
+    # which scan string contents by design. Masking multi-line spans is what
+    # separates a documented pattern from a real call site here.
+    return '''
+import re
+
+TOKEN = re.compile(r"(a+)+$")
+'''

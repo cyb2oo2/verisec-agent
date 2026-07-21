@@ -23,6 +23,57 @@ from the code.
 
 ---
 
+## D-011 — Multi-line string masking stays scan_mode-independent
+**Date:** 2026-07-21 · **Status:** accepted
+
+**Context:** D-008 closed by asserting that rules with `scan_mode = "python-text"` were
+"untouched — masking them would delete ReDoS detection, since regex patterns live in
+string literals." Neither half held. Its code filtered added lines in
+`generate_hypotheses` for every rule regardless of `scan_mode`, so the prose described an
+exemption the implementation never contained. A subsequent uncommitted change added that
+exemption for real, routing `python-text` rules to unmasked text to make the code match
+the prose.
+
+**Decision:** Revert the routing change; masking applies to all rules regardless of
+`scan_mode`. D-008's implementation was already correct and only its closing claim was
+wrong. Added `negative-redos-triple-quoted` and a paired unit test — the sample must not
+fire, a real call site must still fire — because the existing suite could not see the
+difference.
+
+**Evidence:** Measured both ways on the same fixtures.
+
+| Fixture | Masked (kept) | Routed around mask |
+|---|---|---|
+| Triple-quoted doc sample, `re.compile(r"(a+)+$")` | no findings | `py-regex-redos` — false positive |
+| Real single-line call site | `py-regex-redos` | `py-regex-redos` |
+| Real verbose multi-line regex | no findings | no findings |
+| mechanize 0.4.6 holdout | `py-regex-redos-hardening`, boost +0.09 | identical |
+
+The premise fails because `_multiline_string_lines` masks only spans where
+`token.end[0] > token.start[0]`. An ordinary single-line `re.compile(r"(a+)+$")` was never
+masked, so no ReDoS detection was ever at risk. The one shape masking can reach — a
+verbose triple-quoted regex — is undetected in *both* modes, because `py-regex-redos`
+requires `["']` immediately followed by the quantifier group and cannot match past `"""`.
+The exemption therefore recovered zero recall while reopening the embedded-sample false
+positive for all ten `python-text` rules. Holdout output was byte-identical, so no
+Invariant 1 exposure either way.
+
+**Alternatives:** (a) Keep the exemption — rejected on the table above; it is strictly
+worse. (b) Narrow the mask to docstrings only, exempting strings passed as call arguments
+— rejected, no case was found where a real call site is lost, so this buys a distinction
+with no measured benefit. (c) Leave the gap uncovered and rely on review — rejected, the
+mandated negative-control gate ran green over this regression (11/11, 0 failures), which
+is precisely the blind spot D-008 was written to close for `python-code` and left open for
+`python-text`.
+
+**Consequences:** Any future `scan_mode` exemption to the mask needs a fixture showing a
+real call site that is lost without it — the burden is a demonstrated false negative, not
+a plausible argument about string literals. Negative-control case count 11 → 12; the
+hardcoded assertions in `tests/test_case_audit.py` track it. D-008 stays `accepted` — its
+decision is unchanged and only the final sentence of its Consequences is corrected here.
+
+---
+
 ## D-010 — django-cve-2023-36053 demoted; benchmark snapshot regenerated
 **Date:** 2026-07-21 · **Status:** accepted
 

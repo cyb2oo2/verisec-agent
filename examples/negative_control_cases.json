@@ -214,6 +214,25 @@
         }
       ],
       "tags": ["negative-control", "python", "regex"]
+    },
+    {
+      "id": "negative-redos-triple-quoted",
+      "diff": "negative_controls/redos_triple_quoted.diff",
+      "repo": "..",
+      "metadata": {
+        "project": "verisec/negative-controls",
+        "language": "python",
+        "vulnerability_class": "documented-dangerous-pattern"
+      },
+      "expected_findings": [
+        {
+          "rule_id": "py-regex-redos",
+          "file_path": "examples/negative_controls.py",
+          "role": "negative-control",
+          "notes": "Nested quantifier appears only inside a triple-quoted code sample. Covers scan_mode=\"python-text\", which negative-shell-triple-quoted cannot reach."
+        }
+      ],
+      "tags": ["negative-control", "python", "docs", "regex"]
     }
   ]
 }
