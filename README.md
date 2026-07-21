@@ -386,6 +386,18 @@ strong hashes, bounded regexes, and dangerous patterns that appear only in
 comments or string literals. It is intended to keep false positives visible as a
 first-class CI signal.
 
+[examples/self_history_cases.json](examples/self_history_cases.json) measures the
+same concern from the opposite direction. Where a negative control is a crafted
+near miss, this suite replays every parented commit on this repository's own
+`origin/main` as a real benign change with no expected findings, so any finding
+counts as reviewer noise. It runs offline against the local checkout.
+
+The current measurement is 22 findings across 18 commits, 14 of them clean, and
+the gate holds that level rather than demanding zero. Read it as an upper bound
+rather than an estimate for ordinary repositories: 21 of the 22 land in `tests/`,
+`examples/`, or `scripts/`, because a security tool's own repository is full of
+deliberately vulnerable fixtures that normal projects do not contain.
+
 See [examples/real_repo_cases.example.json](examples/real_repo_cases.example.json)
 for a template to turn accepted OSS PRs or CVE patches into evaluation cases.
 The first real seed case is tracked in
@@ -427,6 +439,16 @@ python -m verisec_agent gate `
   --max-negative-control-violations 0
 ```
 
+A noise corpus has no expected findings, so every rate threshold saturates the
+moment anything fires. Gate its total instead, ratcheting the measured level:
+
+```powershell
+python -m verisec_agent gate `
+  --evaluation verisec-runs/self-history/evaluation.json `
+  --max-total-findings 22 `
+  --max-errors 0
+```
+
 `verisec dashboard` rolls multiple evaluations into one release matrix. It can
 also compare the current matrix against a previous `dashboard.json`.
 
@@ -449,7 +471,8 @@ also run audit-only candidate queues through `case_audit_suites` so future CVE/P
 cases are visible without being counted as measured benchmark performance. The
 included [verisec_portfolio.json](verisec_portfolio.json) covers the demo smoke
 test, the real OSS seed portfolio, the promoted CVE suite, the adversarial
-negative-control suite, an audit-only candidate CVE queue, and a benchmark
+negative-control suite, the self-history noise corpus, an audit-only candidate
+CVE queue, and a benchmark
 matrix with a measured Semgrep artifact baseline and a live CodeQL security
 SARIF baseline backed by frozen scanner artifacts. CodeQL can still rerun live
 when the frozen artifact is removed or `reuse_results` is disabled. It is

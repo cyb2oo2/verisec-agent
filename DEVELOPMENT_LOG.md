@@ -23,6 +23,60 @@ from the code.
 
 ---
 
+## D-014 — Reviewer noise is measured on unlabeled real commits, and only measured
+**Date:** 2026-07-22 · **Status:** accepted
+
+**Context:** Every measured figure in this repository comes from cases the detectors have
+already seen. The single observation of VeriSec against unlabeled real code — its own PR —
+produced 11 findings, all false positives (D-008), while the curated benchmark reported
+1.00 recall and zero unexpected findings. Nothing in CI could see that gap, and D-002
+established that the holdout pair is burned, so it cannot be spent measuring noise.
+
+**Decision:** Replay this repository's own history as a noise corpus. Every commit on
+`origin/main` with a parent — 18 — becomes a case with no expected findings, so every
+finding counts as reviewer noise. Measured: 22 findings, 14 of 18 cases clean.
+
+Three choices inside that:
+
+*Selection is "every parented commit", not a subset.* Choosing which commits a noise
+benchmark runs against is exactly where it becomes gameable; a docs-only corpus would score
+perfectly and measure nothing. The rule has to be mechanical.
+
+*No detector changes accompany the corpus.* The four `py-regex-redos` hits in
+`tests/test_hypotheses.py` are patterns inside single-line string literals, carrying the
+D-008 signature of empty `analysis_scope` and zero dataflow steps. They are not obviously
+defects: `python-text` rules scan string contents by design, since that is where regex
+patterns live, so this quantifies a cost of that design rather than exposing a bug. Acting
+on freshly observed data is how the holdout was burned.
+
+*The corpus uses `repo_url` pointing at the local checkout, not `repo`.* The `repo` path in
+`_materialize_case` diffs two refs but returns `repo_path` for the working tree at current
+`HEAD` rather than a checkout at `head_ref`, so patched-file line numbers would not align
+with the string mask that D-008 and D-011 depend on. `repo_url` routes through the
+`git_clone` branch, which checks out `head_ref` correctly. This is a workaround; the
+underlying defect is tracked separately.
+
+**Alternatives:** (a) Gate at zero — rejected, it fails immediately on the 22 and forces
+detector changes before the corpus can land, which is the tuning-against-observation failure
+above. (b) Measure without gating — rejected, nothing then prevents regression, which is the
+corpus's whole purpose. (c) Reuse `max_unexpected_finding_rate` — rejected on mechanics: with
+no expected findings it reaches 1.0 the instant anything fires, so it cannot express a level.
+`max_findings` was added instead. (d) External OSS commits instead of self-history — deferred,
+not rejected; it is more representative but reintroduces the network fragility that killed a
+portfolio run this session, and self-history is where the D-008 evidence originates.
+
+**Consequences:** The published figure is an upper bound for ordinary repositories, not an
+estimate of them: 21 of 22 findings sit in `tests/`, `examples/`, or `scripts/`, because a
+security tool's repository is full of deliberately vulnerable fixtures that normal projects
+lack. Any writing that quotes it must carry that qualification. The ceiling of 22 is a
+ratchet, so lowering it is a deliberate act and raising it requires justification. The
+corpus adds roughly five minutes to the release portfolio, reinforcing D-013's split — it
+cannot ride the pull-request path. As `origin/main` grows the corpus does not: extending it
+is deliberate, because silently growing the case set would move the ceiling underneath the
+ratchet.
+
+---
+
 ## D-013 — Benchmark drift protection is layered, and deliberately skips PRs
 **Date:** 2026-07-22 · **Status:** accepted
 

@@ -32,6 +32,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   primary recall, precision, findings, and validation coverage are unchanged — only
   the control denominator grew.
 
+- Self-history noise corpus (`examples/self_history_cases.json`): every parented commit on
+  this repository's `origin/main` replayed as a benign change with no expected findings,
+  wired into the release portfolio as the `self-history-noise` suite. Measures 22 findings
+  across 18 commits, 14 of them clean; runs offline against the local checkout
+- `max_findings` gate threshold, plus `verisec gate --max-total-findings`, for ratcheting a
+  total finding count where rate thresholds saturate because nothing is expected
 - Benchmark `claim_boundaries` accept `{system label:metric}` references, resolved from
   the computed matrix rows so quoted counts cannot contradict the table they qualify. An
   unknown system, unknown metric, or unmeasured metric fails the portfolio run

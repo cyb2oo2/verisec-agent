@@ -28,6 +28,28 @@ through `case-audit` → `case-promote`; do not merge into
 
 ## Backlog
 
+### T-009 — `repo` materialization returns a checkout at the wrong revision
+**Status:** active
+
+`_materialize_case` in `src/verisec_agent/evaluation.py` (the `git_existing_repo` branch,
+~L493-505) computes `git diff base_ref head_ref` correctly but returns `repo_path` pointing at
+the existing working tree, which is at whatever `HEAD` happens to be — not a checkout at
+`head_ref`. The `repo_url` branch a few lines above does check out `head_ref` first.
+
+Consequence: for any case whose `head_ref` is not the current `HEAD`, the diff and the
+checkout describe different revisions. `_file_string_lines` resolves multi-line string spans
+by patched-file line number and explicitly assumes "the checkout is the patched revision"
+(D-008), so masking silently consults the wrong lines. Findings do not error; they are just
+computed against mismatched source.
+
+Found while building T-008, which works around it by using `repo_url` with a local path
+(D-014). No measured suite uses the `repo` + refs form today, so nothing published is
+affected — worth confirming that before changing anything.
+
+Fix is likely to check out `head_ref` into an isolated worktree on this branch as the
+`repo_url` path does. Needs a regression test where `head_ref != HEAD` and the two revisions
+differ in a multi-line string, which is the case that currently passes while being wrong.
+
 ### T-003 — A genuinely blind holdout for the next measured claim
 **Status:** blocked
 
@@ -73,6 +95,26 @@ required" property is central to the project's positioning.
 ---
 
 ## Done
+
+### T-008 — Real-world false-positive corpus from self-history
+**Completed:** 2026-07-22
+
+Commit `b8b415d`. `examples/self_history_cases.json` replays all 18 parented commits on
+`origin/main` as benign changes with no expected findings. Measured 22 findings, 14 of 18
+cases clean, concentrated in four commits and overwhelmingly in fixtures: 21 of 22 in
+`tests/`, `examples/`, or `scripts/`, one in `src/`. Wired as the `self-history-noise`
+portfolio suite, gated with a new `max_findings` threshold ratcheted at 22.
+
+Read the figure as an upper bound, not an estimate — the concentration in fixtures is an
+artifact of this being a security tool's own repository. Design, alternatives, and the
+reason no detector changed alongside it: D-014.
+
+Runs offline, so it avoids the network fragility noted under T-007. Costs roughly five
+minutes of portfolio wall-clock, which keeps it off the pull-request path per D-013.
+
+**Follow-ups:** T-009 (the `repo` materialization defect found while building this).
+External-OSS commits as a second corpus remain deferred, not rejected — more representative,
+but reintroduces network dependence.
 
 ### T-007 — Generated claim-boundary counts and benchmark drift protection
 **Completed:** 2026-07-22
