@@ -1023,6 +1023,9 @@ def _build_benchmark_matrix(
         _benchmark_row(item, suites_by_label, scanner_baselines_by_label)
         for item in raw_systems
     )
+    claim_boundaries = tuple(
+        _resolve_claim_boundary(item.strip(), systems) for item in raw_claim_boundaries
+    )
     result = {
         "summary": {
             "system_count": len(systems),
@@ -1040,7 +1043,7 @@ def _build_benchmark_matrix(
             ),
         },
         "systems": systems,
-        "claim_boundaries": tuple(item.strip() for item in raw_claim_boundaries),
+        "claim_boundaries": claim_boundaries,
     }
     output_dir.mkdir(parents=True, exist_ok=True)
     (output_dir / "benchmark_matrix.json").write_text(
@@ -1052,6 +1055,44 @@ def _build_benchmark_matrix(
         encoding="utf-8",
     )
     return result
+
+
+_CLAIM_PLACEHOLDER = re.compile(r"\{([^{}:]+):([^{}:]+)\}")
+
+
+def _resolve_claim_boundary(text: str, systems: tuple[dict[str, Any], ...]) -> str:
+    """Substitute ``{system label:metric}`` in claim-boundary prose with computed values.
+
+    Counts in a claim boundary describe the benchmark the surrounding metrics were
+    measured on, so they are derived rather than hand-maintained. An unresolved
+    reference raises instead of passing through: publishing a claims document
+    containing a literal placeholder, or prose contradicting the table beside it, is
+    the failure this substitution exists to prevent.
+    """
+    metrics_by_label = {system["label"]: system["metrics"] for system in systems}
+
+    def _replace(match: re.Match[str]) -> str:
+        label = match.group(1).strip()
+        metric = match.group(2).strip()
+        metrics = metrics_by_label.get(label)
+        if metrics is None:
+            raise PortfolioError(
+                f"benchmark_matrix.claim_boundaries references unknown system '{label}'."
+            )
+        if metric not in metrics:
+            raise PortfolioError(
+                f"benchmark_matrix.claim_boundaries references unknown metric '{metric}' "
+                f"on system '{label}'."
+            )
+        value = metrics[metric]
+        if value is None:
+            raise PortfolioError(
+                f"benchmark_matrix.claim_boundaries references unmeasured metric '{metric}' "
+                f"on system '{label}'."
+            )
+        return _format_rate(value) if isinstance(value, float) else _format_count(value)
+
+    return _CLAIM_PLACEHOLDER.sub(_replace, text)
 
 
 def _benchmark_row(
