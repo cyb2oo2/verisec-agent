@@ -23,6 +23,44 @@ from the code.
 
 ---
 
+## D-013 — Benchmark drift protection is layered, and deliberately skips PRs
+**Date:** 2026-07-22 · **Status:** accepted
+
+**Context:** Implementing D-012 surfaced a constraint that entry did not anticipate. The
+release portfolio step in `ci.yml` is guarded by `github.event_name != 'pull_request'`, so
+any check consuming its output inherits that guard and cannot run on pull requests. A
+single freshness check would therefore catch drift only after merge — on the branch where
+it is most expensive to discover.
+
+**Decision:** Split protection into two tiers. Cross-surface consistency
+(`tests/test_published_benchmark.py`) needs no portfolio run and rides the normal suite, so
+it executes on every pull request; it compares `docs/RELEASE_BENCHMARK.md` against
+`docs/release_benchmark_matrix.json` through the real renderer, and README's
+hand-transcribed table against both. Regeneration freshness
+(`scripts/check_benchmark_freshness.py`) needs a live run and rides the existing portfolio
+step on push. Separately, an unresolved `claim_boundaries` placeholder raises rather than
+rendering a fallback: publishing a claims document containing a literal token, or prose
+contradicting its own table, is the failure the derivation exists to prevent.
+
+**Alternatives:** (a) Drop the `pull_request` guard so freshness runs on PRs — rejected. It
+adds a multi-minute, network-dependent portfolio run to every PR, and that run is
+observably fragile: a transient `fatal: fetch-pack: invalid index-pack output` during
+upstream source materialization killed one verification run in this session. Putting that
+on the PR path trades real drift protection for routine false failures. (b) One check
+covering both — rejected, it inherits the portfolio dependency and loses PR coverage
+entirely. (c) Byte comparison of the snapshot — rejected, Git stores it LF-normalized while
+the generator emits the platform ending, so it fails on Windows every run for reasons
+unrelated to staleness. JSON is compared parsed and Markdown by lines.
+
+**Consequences:** A suite composition change that is never republished is caught on push to
+`main`, not on the PR that introduced it; the PR-time tier catches the likelier
+hand-transcription drift instead. If the portfolio is ever made cheap and network-independent
+enough to run per-PR, the guard can be dropped and the tiers merged — that is the condition
+to look for, not a general preference for one check. The portfolio's network fragility is
+itself unaddressed and is a plausible source of flaky CI on `main`.
+
+---
+
 ## D-012 — Benchmark claim-boundary counts move to generated metadata
 **Date:** 2026-07-21 · **Status:** accepted
 

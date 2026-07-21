@@ -467,6 +467,9 @@ cases so scanner drift can be measured without destabilizing the release gate.
 After a passed nightly run and passed attestation, `scripts/promote_nightly_artifacts.py`
 freezes the live scanner outputs back into portable release baselines and can
 copy a passed release benchmark snapshot into `docs/`.
+`scripts/check_benchmark_freshness.py` then guards that snapshot in CI, failing
+when the published figures no longer match a live run. See
+[docs/PORTFOLIO_PROFILES.md](docs/PORTFOLIO_PROFILES.md).
 
 Scanner baseline entries can either point at captured artifacts:
 

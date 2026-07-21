@@ -32,6 +32,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   primary recall, precision, findings, and validation coverage are unchanged — only
   the control denominator grew.
 
+- Benchmark `claim_boundaries` accept `{system label:metric}` references, resolved from
+  the computed matrix rows so quoted counts cannot contradict the table they qualify. An
+  unknown system, unknown metric, or unmeasured metric fails the portfolio run
+- `scripts/check_benchmark_freshness.py` compares a generated benchmark matrix against
+  the snapshot in `docs/`, wired into CI after the release portfolio step
+- Tests asserting the published benchmark surfaces agree: `docs/RELEASE_BENCHMARK.md`
+  against `docs/release_benchmark_matrix.json`, and README's hand-transcribed table
+  against both
+
 ### Changed
 
 - README restructured for operator-first onboarding; lab commands deferred

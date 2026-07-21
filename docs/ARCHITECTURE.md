@@ -150,6 +150,9 @@ interfaces.
 - `scripts/promote_nightly_artifacts.py`: verifies a passed live nightly
   portfolio plus attestation, refreshes frozen release scanner baselines, and
   optionally publishes the current release benchmark snapshot into `docs/`.
+- `scripts/check_benchmark_freshness.py`: compares a generated benchmark matrix
+  against the snapshot checked into `docs/`, failing when the published figures
+  no longer match a live run.
 
 ## Bundle contract
 

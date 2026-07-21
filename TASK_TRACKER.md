@@ -8,7 +8,7 @@ do not duplicate roadmap items here until they become active work.
 
 **Status vocabulary:** `active` · `blocked` · `review` · `done`
 
-**Last updated:** 2026-07-21 · **Branch:** `cyb/demote-django-36053`
+**Last updated:** 2026-07-22 · **Branch:** `cyb/demote-django-36053`
 
 ---
 
@@ -27,28 +27,6 @@ through `case-audit` → `case-promote`; do not merge into
 ---
 
 ## Backlog
-
-### T-007 — Generated claim-boundary counts and a regeneration-freshness check
-**Status:** active
-
-`claim_boundaries` in `verisec_portfolio.json` and `verisec_portfolio.nightly.json` is
-hand-maintained prose embedding counts the system also computes. It has now needed manual
-correction twice (D-010, then T-006). Invariant 2 forbids hand-editing benchmark numbers while the
-architecture requires exactly that in this one string, and nothing in CI detects the drift — the
-portfolio and attestation both passed with the prose already stale.
-
-Two parts: derive the counts from computed metrics, and add a CI check asserting regeneration
-produces no diff against the committed snapshot. Rationale and rejected alternatives: D-012.
-
-Implementation note: the freshness check must normalize line endings or compare parsed JSON. Git
-stores the snapshot LF-normalized while the generator emits CRLF on Windows, so a naive byte
-comparison fails every run for reasons unrelated to drift. Verified this session.
-
-Scope note: changes the output contract of `portfolio.py` and `dashboard.py`, so it belongs in its
-own PR under the one-concern-per-PR rule. README's benchmark table is generated-*derived* but
-hand-transcribed, so a check covering only `docs/*.json` would still miss drift there.
-
----
 
 ### T-003 — A genuinely blind holdout for the next measured claim
 **Status:** blocked
@@ -95,6 +73,30 @@ required" property is central to the project's positioning.
 ---
 
 ## Done
+
+### T-007 — Generated claim-boundary counts and benchmark drift protection
+**Completed:** 2026-07-22
+
+Three commits, `ed8d523` / `d99e631` / `a356aec`. `claim_boundaries` prose now takes
+`{system label:metric}` references resolved from the computed rows, so the counts that needed
+manual correction twice (D-010, T-006) can no longer disagree with the table they qualify. The
+templated manifests reproduce the published snapshot byte-identically, so no republish was needed.
+
+Output shape was unchanged — `claim_boundaries` is still a list of strings — so `replay.py`,
+`integrity.py`, and `scanner_baseline.py` were untouched. The scope note predicting a
+`portfolio.py` / `dashboard.py` contract change was wrong; `dashboard.py` needed no edit at all.
+
+Protection is layered because the release-portfolio CI step is guarded by
+`github.event_name != 'pull_request'`: cross-surface consistency runs in pytest on every PR,
+regeneration freshness rides the portfolio step on push. Rationale and the condition under which
+the tiers should merge: D-013.
+
+Tests 182 → 194. Both new checks were verified by injecting drift and confirming failure, not
+merely by observing them pass.
+
+**Left open:** the release portfolio is network-fragile — a transient
+`fatal: fetch-pack: invalid index-pack output` during upstream materialization killed one
+verification run. Unrelated to this work, plausible source of flaky CI on `main`, no entry yet.
 
 ### T-006 — Cover `scan_mode=python-text` masking; regenerate the snapshot
 **Completed:** 2026-07-21

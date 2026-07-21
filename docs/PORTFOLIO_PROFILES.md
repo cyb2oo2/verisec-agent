@@ -37,6 +37,19 @@ Its metrics apply only to the curated cases named in the manifest. Scanner
 comparisons are patch-overlap measurements for recorded configurations, not
 claims of universal superiority or estimates of production recall.
 
+CI verifies that snapshot against the run it just produced:
+
+```powershell
+python scripts/check_benchmark_freshness.py `
+  --generated verisec-runs/release-portfolio/benchmark-matrix
+```
+
+It exits non-zero with a diff when the checked-in figures no longer match a live
+run, so a suite composition change that was never republished fails rather than
+publishing silently. Counts quoted in `claim_boundaries` prose are resolved from
+the computed rows via `{system label:metric}` references, so the disclaimer
+cannot contradict the table beside it.
+
 ## Live nightly profile
 
 Manifest: `verisec_portfolio.nightly.json`
