@@ -73,6 +73,71 @@ def test_gate_treats_clean_report_as_fully_covered(tmp_path: Path) -> None:
     assert result["metrics"]["validation_coverage_rate"] == 1.0
 
 
+def test_gate_does_not_apply_confidence_floor_to_a_clean_report(tmp_path: Path) -> None:
+    """A review with no findings must not fail the average-confidence floor.
+
+    The mean of an empty set is reported as 0.0, so applying the floor would fail
+    exactly the reviews that found nothing wrong - a documentation-only pull
+    request, for instance.
+    """
+    report_path = tmp_path / "report.json"
+    report_path.write_text(
+        json.dumps(
+            {
+                "summary": {
+                    "finding_count": 0,
+                    "avg_confidence": 0.0,
+                    "validation_step_count": 0,
+                    "validation_covered": 0,
+                    "tool_supported_findings": 0,
+                    "validation_gap_findings": 0,
+                    "required_failures": [],
+                    "severity_counts": {},
+                }
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    result = run_gate(
+        report_path=report_path,
+        thresholds=GateThresholds(min_avg_confidence=0.6),
+    )
+
+    assert result["passed"] is True
+    assert result["failures"] == []
+
+
+def test_gate_still_applies_confidence_floor_when_findings_exist(tmp_path: Path) -> None:
+    """Guard against the clean-report exemption swallowing real low-confidence runs."""
+    report_path = tmp_path / "report.json"
+    report_path.write_text(
+        json.dumps(
+            {
+                "summary": {
+                    "finding_count": 2,
+                    "avg_confidence": 0.4,
+                    "validation_step_count": 2,
+                    "validation_covered": 2,
+                    "tool_supported_findings": 2,
+                    "validation_gap_findings": 0,
+                    "required_failures": [],
+                    "severity_counts": {"medium": 2},
+                }
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    result = run_gate(
+        report_path=report_path,
+        thresholds=GateThresholds(min_avg_confidence=0.6),
+    )
+
+    assert result["passed"] is False
+    assert any("average confidence" in failure for failure in result["failures"])
+
+
 def test_gate_fails_evaluation_when_thresholds_are_missed(tmp_path: Path) -> None:
     evaluation_path = tmp_path / "evaluation.json"
     evaluation_path.write_text(
