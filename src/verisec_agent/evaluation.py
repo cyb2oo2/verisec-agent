@@ -494,14 +494,26 @@ def _materialize_case(
             raise EvaluationError(
                 f"Case {case.case_id} needs repo or repo_url for base/head materialization."
             )
-        diff_text = _git_diff(case.repo_path, case.base_ref, case.head_ref)
+        # Check out head_ref into an isolated clone, exactly as the repo_url branch does,
+        # so the returned repo_path is the patched revision the diff describes rather than
+        # the caller's working tree at whatever HEAD happens to be. _file_string_lines
+        # resolves multi-line string spans against this checkout assuming it is head_ref
+        # (D-008); returning the source tree silently consulted the wrong lines (T-009).
+        checkout = _checkout_case_repo(
+            case,
+            source_dir=source_dir,
+            source_cache_dir=source_cache_dir,
+            ref=case.head_ref,
+        )
+        source_meta = _source_meta(checkout)
+        diff_text = _git_diff(source_meta["repo_path"], case.base_ref, case.head_ref)
         diff_path.write_text(diff_text, encoding="utf-8")
         return {
             "diff_path": diff_path,
-            "repo_path": case.repo_path,
+            "repo_path": source_meta["repo_path"],
             "source_kind": "git_existing_repo",
-            "source_fetch_mode": "direct",
-            "source_cache_path": None,
+            "source_fetch_mode": source_meta["source_fetch_mode"],
+            "source_cache_path": source_meta["source_cache_path"],
         }
 
     if case.diff_path is None:
