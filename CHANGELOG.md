@@ -51,6 +51,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 - README restructured for operator-first onboarding; lab commands deferred
 - ReDoS regex fallback no longer treats bare `max_length` / length bounds as ReDoS
+- Benchmark claim boundaries now disclose that the promoted-CVE row's primary recall
+  reflects regex signatures matching the scored patches' literal text, not detection that
+  generalizes; it is not a like-for-like comparison with the scanner rows. No benchmark
+  number changed
 
 ### Removed
 

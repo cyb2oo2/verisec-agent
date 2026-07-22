@@ -72,7 +72,12 @@ repositories. Snapshot from
 | CodeQL baseline | 3 OSS CVE/PR cases | 10 isolated scanner controls | 0.00 | 0.00 | 0 | 10 | 10 | 1.00 | 0.00 | 0 |
 
 Scanner rows use patch-overlap scoring for the recorded configurations; zero
-recall means those configs did not match labeled changed lines in this set.
+recall means those configs did not match labeled changed lines in this set. The
+promoted-CVE row's recall comes from regex rules whose patterns match
+identifiers introduced by the specific patches scored, so it measures signature
+coverage of these curated cases rather than detection that generalizes to unseen
+patches, and is not a like-for-like comparison with the scanner rows (see
+[DEVELOPMENT_LOG.md](DEVELOPMENT_LOG.md) D-015).
 
 **Holdout protocol** (blind pilot vs later post-fix remeasure):
 
