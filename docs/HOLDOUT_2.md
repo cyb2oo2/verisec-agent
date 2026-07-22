@@ -189,7 +189,7 @@ Run once on 2026-07-22 against detector commit `0ca2df5`
 | Strict gate | failed (recall 0) | pass | pass |
 
 **Headline: 0 findings across all 8 cases. Primary recall 0/2. Zero false
-positives.**
+positives.** Public analysis and implications: [D-018.md](D-018.md).
 
 Both primary-eligible cases missed, and for the same structural reason D-015
 identified — `py-regex-redos-hardening` keys on `re.<func>(<inline pattern>` and

@@ -29,7 +29,7 @@ from the code.
 **Context:** Holdout 2 (D-017) was run once on 2026-07-22 against detector commit `0ca2df5`.
 Outcome: 0 findings across all 8 blind cases. Primary recall 0/2. Zero false positives on the
 six non-primary cases. This is the first blind measurement of VeriSec on cases whose detector
-behaviour had never been observed.
+behaviour had never been observed. Public analysis and implications: `docs/D-018.md`.
 
 **What it means:** Both primary-eligible cases — textbook ReDoS pattern-delta fixes that were
 selected *because* they match the rule's stated assumption — produced zero hypotheses. The
