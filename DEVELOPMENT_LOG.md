@@ -23,6 +23,50 @@ from the code.
 
 ---
 
+## D-021 — De-duplicate the py-sql-* patch-literal rules; defer the retire/keep decision
+**Date:** 2026-07-23 · **Status:** accepted
+**Context:** Auditing the four `py-sql-*` rules (`py-sql-lookup-injection`,
+`py-sql-identifier-injection`, `py-sql-explain-option-injection`, `py-sql-delimiter-injection`)
+for the T-011 retire-or-generalize question surfaced two things the tracker's "Django-specific
+pack" framing had wrong. (1) The rules live in the **always-on builtin set**
+(`hypotheses.py` `RULES → BUILTIN_RULES`), so they fire on every default review
+(`packs = ["builtin"]`), not only when the django pack is opted in. The promoted-CVE `.toml`
+configs use default builtin, so the illustrative `primary_recall: 1.0` row (D-015, D-016) is
+produced by the builtin copies. (2) The same four rules were **duplicated verbatim** in
+`rules_django.py` — a second set of `Rule(...)` literals with the same IDs plus `family` /
+`mode` fields the builtin copies lack. Enabling `["builtin","django"]` yields duplicate IDs,
+deduped downstream; the two copies could silently drift. Separately, "generalize" is not a real
+option: these detect a *hardening fix being added* (`mode="adds-hardening"`) keyed to
+patch-specific identifiers, and there is no honest generic form of "detect this specific patch."
+The generic SQLi detector `py-sql-string-format` (regex + semantic taint, D-019) already covers
+the *vulnerability-present* signal.
+**Decision:** Owner chose the lowest-churn path: de-duplicate only, leave detection behavior and
+the benchmark untouched, defer the honesty question. `rules_django.py` no longer re-declares the
+rules; `DJANGO_RULES` now filters `hypotheses.RULES` by rule ID, so the django pack re-exports the
+exact same objects (verified by identity). `hypotheses.py` is untouched — the benchmark-driving
+builtin behavior is byte-identical. A module-load guard raises if a re-export target is renamed or
+dropped. Single source of truth is `hypotheses.py` (not `rules_django.py`) because that is where
+the measured behavior fires and moving the rules out of builtin is the rejected "quarantine"
+option; keeping them there avoids a circular import (`rules_django` imports `Rule` from
+`hypotheses`).
+**Alternatives — the deferred decision, recorded for the next session:** (A) **Retire** the four
+rules from builtin and delete the pack copies; keep the promoted cases as verification-only (their
+property-checks still confirm each fix landed via `VERISEC_EVIDENCE`), and regenerate the benchmark
+so the promoted-CVE row shows an honest 0.0 primary recall (Invariant 2: regenerate, never
+hand-edit). Most honest; the verifiable fact D-016 preserved lives in the property-checks, not the
+detection rules, so retiring does not discard it. (C) **Quarantine**: move the rules out of
+always-on builtin into the opt-in django pack only, relabel as known-CVE regression fingerprints,
+and enable the django pack in the four promoted configs to keep the illustrative row. Both change
+published measurements and were explicitly reserved as owner calls (D-015, D-016); neither was
+taken now.
+**Consequences:** The builtin/django duplication is gone and cannot re-drift. Default reviews,
+the promoted suite, and the release benchmark are unchanged — no regeneration required, nothing
+published moves. The django pack's four rules lose the vestigial `family`/`mode` fields that only
+ever applied in the standalone-`["django"]` case (no measured suite uses it; the fields did not
+affect the builtin-driven benchmark). No user-visible behavior change, so no CHANGELOG entry. The
+retire-vs-keep question remains open under T-011 with the full analysis above; the generic
+`py-sql-string-format` is the path for real SQLi detection regardless of how it resolves.
+
 ## D-020 — Two materialization/rendering defects fixed: brace argv and head_ref checkout
 **Date:** 2026-07-22 · **Status:** accepted
 **Context:** Two independent infrastructure bugs surfaced by Holdout 2 (D-018), neither a detector
