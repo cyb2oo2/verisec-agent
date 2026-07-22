@@ -937,7 +937,14 @@ class _SemanticAnalyzer(ast.NodeVisitor):
                 if isinstance(value, ast.FormattedValue)
             )
         if isinstance(node, ast.BinOp):
-            return self._expr_sql_sensitive(node.left) or self._expr_sql_sensitive(node.right)
+            if self._expr_sql_sensitive(node.left) or self._expr_sql_sensitive(node.right):
+                return True
+            # Concatenation of a SQL literal with tainted data: "SELECT ... " + user_id.
+            return (
+                isinstance(node.op, ast.Add)
+                and _contains_sql_literal(node)
+                and self._expr_tainted(node)
+            )
         if isinstance(node, ast.Call):
             if self._call_returns_sql(node):
                 return True
@@ -1052,9 +1059,15 @@ class _SemanticAnalyzer(ast.NodeVisitor):
                 if isinstance(value, ast.FormattedValue)
             )
         if isinstance(node, ast.BinOp):
-            return self._expr_changed_sql_sensitive(
+            if self._expr_changed_sql_sensitive(
                 node.left
-            ) or self._expr_changed_sql_sensitive(node.right)
+            ) or self._expr_changed_sql_sensitive(node.right):
+                return True
+            return (
+                isinstance(node.op, ast.Add)
+                and _contains_sql_literal(node)
+                and self._expr_changed_tainted(node)
+            )
         if isinstance(node, ast.Call):
             if self._call_returns_changed_sql(node):
                 return True
@@ -1314,7 +1327,12 @@ class _SemanticAnalyzer(ast.NodeVisitor):
 
     @staticmethod
     def _is_sql_execute(call_name: str) -> bool:
-        return call_name.endswith(".execute") or call_name.endswith(".executemany")
+        # DB-API execute/executemany/executescript plus the common ORM raw-query
+        # escape hatch (Django `Model.objects.raw`). Taint-gated at the call site,
+        # so a non-SQL `.raw` with no SQL-literal argument does not fire.
+        return call_name.endswith(
+            (".execute", ".executemany", ".executescript", ".raw")
+        )
 
     @staticmethod
     def _set_membership(values: set[str], key: str, enabled: bool) -> None:

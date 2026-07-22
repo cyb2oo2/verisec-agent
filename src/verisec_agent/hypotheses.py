@@ -64,13 +64,19 @@ RULES: tuple[Rule, ...] = (
         rule_id="py-sql-string-format",
         title="SQL query string formatting introduced",
         severity="high",
-        pattern=re.compile(r"(SELECT|INSERT|UPDATE|DELETE).*(f\"|%|\.format\()", re.IGNORECASE),
+        # `["']\s*%` matches string-then-% formatting ("..." % v) but not a `%s`
+        # placeholder inside a parameterized query ("...%s", params), which is safe.
+        # Real %-formatting SQLi is caught precisely (taint-gated) by python_semantics.
+        pattern=re.compile(
+            r"(SELECT|INSERT|UPDATE|DELETE).*(f[\"']|\.format\(|[\"']\s*%\s*[\w(])",
+            re.IGNORECASE,
+        ),
         risk="Formatted SQL strings can allow injection when variables include attacker input.",
         fix_guidance="Use parameterized queries from the database driver.",
         recommended_validation=("SQL injection regression test", "static query construction scan"),
         confidence=0.64,
         false_positive_notes=(
-            "May be safe for compile-time constants, but needs dataflow confirmation."
+            "Parameterized %s/%(name)s placeholders are safe; the semantic layer confirms taint."
         ),
         scan_mode="python-text",
     ),

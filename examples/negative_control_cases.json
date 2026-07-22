@@ -285,6 +285,52 @@
       ]
     },
     {
+      "id": "negative-parameterized-sql-percent",
+      "diff": "negative_controls/parameterized_sql_percent.diff",
+      "repo": "..",
+      "metadata": {
+        "project": "verisec/negative-controls",
+        "language": "python",
+        "vulnerability_class": "sql-injection-near-miss"
+      },
+      "expected_findings": [
+        {
+          "rule_id": "py-sql-string-format",
+          "file_path": "examples/negative_controls.py",
+          "role": "negative-control",
+          "notes": "`%s` is a DB-API placeholder with a params tuple; the parameterized form is safe and must not be flagged."
+        }
+      ],
+      "tags": [
+        "negative-control",
+        "python",
+        "sql"
+      ]
+    },
+    {
+      "id": "negative-redos-literal-in-structure",
+      "diff": "negative_controls/redos_literal_in_structure.diff",
+      "repo": "..",
+      "metadata": {
+        "project": "verisec/negative-controls",
+        "language": "python",
+        "vulnerability_class": "redos-near-miss"
+      },
+      "expected_findings": [
+        {
+          "rule_id": "py-regex-redos",
+          "file_path": "examples/negative_controls.py",
+          "role": "negative-control",
+          "notes": "A redos-shaped raw string in a data structure with no re.* sink is not asserted to be a regex; flagging it would be a false positive."
+        }
+      ],
+      "tags": [
+        "negative-control",
+        "python",
+        "regex"
+      ]
+    },
+    {
       "id": "negative-redos-triple-quoted",
       "diff": "negative_controls/redos_triple_quoted.diff",
       "repo": "..",

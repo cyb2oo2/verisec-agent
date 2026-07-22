@@ -56,7 +56,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 - ReDoS shape detection now recognizes the greedy adjacent-wildcard polynomial class
   (`.*.*`, the canonical `.*.*=.*` form), previously missed. Greedy-only by design, with a
-  paired negative control (`.*foo.*` contains-forms stay linear/quiet). Negative controls 12 → 13
+  paired negative control (`.*foo.*` contains-forms stay linear/quiet)
+- SQL injection detection generalized beyond patch-literal matching: string concatenation of a
+  SQL literal with tainted data now fires, and the ORM raw-query sink (`.raw`, plus
+  `.executescript`) is recognized — taint-gated, not Django-specific. Negative controls 12 → 15
 - README restructured for operator-first onboarding; lab commands deferred
 - ReDoS regex fallback no longer treats bare `max_length` / length bounds as ReDoS
 - Benchmark claim boundaries now disclose that the promoted-CVE row's primary recall
@@ -79,6 +82,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Fixed
 
+- Parameterized SQL using `%s` / `%(name)s` DB-API placeholders
+  (`execute("... = %s", params)`) is no longer flagged as SQL string formatting. The regex
+  fallback matched any `SELECT ... %`; it now matches string-then-% formatting only, and real
+  `%`-formatting injection is caught precisely and taint-gated by the semantic layer
 - Regex fallback no longer reports code samples embedded in multi-line strings as
   real call sites. String spans are resolved from the checked-out file when
   available, so a triple-quoted sample cut short by an evidence window is still

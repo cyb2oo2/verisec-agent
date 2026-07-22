@@ -74,13 +74,19 @@ sink set including `re.split`. The Holdout 2 misses do not stem from call-site s
 `is_redos_prone`. Synthetic-validated, greedy-only (does not touch the burned transformers
 pattern), with a registered negative control.
 
+**Shipped, follow-up (D-019):** generic SQL injection detection — string concatenation with taint,
+plus `.raw`/`.executescript` sinks — and a **real precision fix**: parameterized `%s` DB-API
+placeholders no longer trip the regex fallback. Two registered negative controls. Synthetic-
+validated; not Django-specific.
+
 **Remaining scope:**
-- **Regex literals in data structures** (lexer token tuples, no `re.*` call) — the pygments-class
-  gap, architecturally invisible today. Higher false-positive risk (a redos-shaped string is not
-  necessarily a compiled regex); needs its own FP analysis and controls before shipping.
-- **Generic `py-sql-*`** (subsumes Thread 2 Option B): the SQL family matches patch-literal
-  identifiers (D-015) and cannot fire on any unseen SQL fix. Rewriting it to detect
-  validation/parameterization-added shapes is real work with real FP risk.
+- **Bare regex literals in data structures with no `re.*` sink** (pygments class) — deliberately
+  left unflagged; a redos-shaped string is not necessarily a compiled regex (FP hazard). Pinned by
+  `negative-redos-literal-in-structure`. Safe closure needs a regex-context signal (dataflow to a
+  sink, or framework marker). The variable-bound and class-attribute forms already fire.
+- **`py-sql-*` identifier rules** (D-015): the Django-specific patch-literal rules still exist and
+  still cannot fire on unseen SQL. The new generic concat/taint detection covers the common shapes;
+  whether to retire or generalize the identifier rules is a separate decision.
 
 Hard constraints unchanged: **validate on new, unseen cases only** (Holdout 2 and pilot are
 burned — Invariant 1); **paired negative controls first** (Invariant 4). The honest test of

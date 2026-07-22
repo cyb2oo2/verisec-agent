@@ -399,3 +399,77 @@ def test_semantic_match_boosts_confidence_over_regex_only() -> None:
     assert finding.confidence > 0.64
     assert finding.dataflow_steps
     assert "AST/dataflow" in finding.analysis_notes
+
+
+def test_sql_concatenation_with_tainted_data_fires() -> None:
+    """String concatenation of a SQL literal with tainted input reaching execute."""
+    diff = '''diff --git a/dao.py b/dao.py
+--- a/dao.py
++++ b/dao.py
+@@ -1,2 +1,3 @@
+ def lookup(cursor, user_id=input()):
++    cursor.execute("SELECT * FROM accounts WHERE id = " + user_id)
+     return cursor
+'''
+    findings = generate_hypotheses(
+        evidence_windows(parse_unified_diff(diff)),
+        min_confidence=0.35,
+    )
+    assert any(f.rule_id == "py-sql-string-format" for f in findings)
+
+
+def test_sql_orm_raw_sink_with_tainted_data_fires() -> None:
+    """The ORM raw-query escape hatch is a SQL sink, not Django-specific plumbing."""
+    diff = '''diff --git a/views.py b/views.py
+--- a/views.py
++++ b/views.py
+@@ -1,2 +1,3 @@
+ def search(user_id=input()):
++    return User.objects.raw("SELECT * FROM users WHERE id = " + user_id)
+     # end
+'''
+    findings = generate_hypotheses(
+        evidence_windows(parse_unified_diff(diff)),
+        min_confidence=0.35,
+    )
+    assert any(f.rule_id == "py-sql-string-format" for f in findings)
+
+
+def test_parameterized_percent_placeholder_not_flagged() -> None:
+    """`execute("... %s", params)` is the safe parameterized form and must stay quiet.
+
+    Near-miss control for the crude regex fallback, which previously fired on any
+    SELECT containing a `%`.
+    """
+    diff = '''diff --git a/dao.py b/dao.py
+--- a/dao.py
++++ b/dao.py
+@@ -1,2 +1,3 @@
+ def lookup(cursor, user_id=input()):
++    cursor.execute("SELECT * FROM accounts WHERE id = %s", (user_id,))
+     return cursor
+'''
+    findings = generate_hypotheses(
+        evidence_windows(parse_unified_diff(diff)),
+        min_confidence=0.35,
+    )
+    assert not any(f.rule_id == "py-sql-string-format" for f in findings)
+
+
+def test_redos_literal_in_data_structure_without_sink_stays_quiet() -> None:
+    """A redos-shaped raw string in a data structure with no re.* sink is not asserted
+    to be a regex. Detecting it would be a false positive; this pins that boundary."""
+    diff = '''diff --git a/tokens.py b/tokens.py
+--- a/tokens.py
++++ b/tokens.py
+@@ -1,2 +1,4 @@
+ TOKENS = [
++    (r"(a+)+$", "IDENT"),
++    (r"[0-9]+", "NUMBER"),
+ ]
+'''
+    findings = generate_hypotheses(
+        evidence_windows(parse_unified_diff(diff)),
+        min_confidence=0.35,
+    )
+    assert not any(f.family == "redos" for f in findings)

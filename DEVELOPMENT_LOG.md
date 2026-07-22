@@ -65,6 +65,35 @@ sharp edge — adding a function mid-file shifts the triple-quoted control's lin
 reintroduces a masking false positive; the fixture is appended at end-of-file, and the gate
 caught the regression when it was not.
 
+**Follow-up increment (SQL generalization + a real FP fix).** Synthetic probes of the SQL path
+showed the semantic layer is already precise (parameterized `?` stays quiet, f-string / `.format`
+/ `%`-formatting fire only with taint) but has two recall gaps, and that the **regex fallback
+carried a false positive**: `py-sql-string-format`'s pattern matched any `SELECT ... %` including
+the safe `%s` DB-API placeholder, so `execute("... WHERE id = %s", (uid,))` — the most common
+parameterized form — was flagged. Three changes, all synthetic-validated:
+
+1. Tightened the regex fallback to `["']\s*%` (string-then-% formatting) so `%s`/`%(name)s`
+   placeholders no longer trip it; real `%`-formatting SQLi is still caught, precisely and
+   taint-gated, by the semantic layer.
+2. Added string-concatenation detection (`"SELECT ..." + tainted`) to `_expr_sql_sensitive` and
+   its changed-path twin, gated on a SQL literal plus taint.
+3. Added `.raw` / `.executescript` to the SQL sink set (ORM raw-query escape hatch and sqlite),
+   taint-gated so a non-SQL `.raw` does not fire.
+
+This directly answers D-015 for the recall side without Django-specific literals: the detection is
+now shape-and-taint based. Two registered negative controls guard it —
+`negative-parameterized-sql-percent` (the FP fix) and `negative-redos-literal-in-structure`.
+
+**Sub-task 1 (regex literals in data structures) deliberately scoped, not force-fixed.** Probes
+confirmed the safe forms already work: a redos pattern bound to a variable and compiled
+(`pat = r"..."; re.compile(pat)`), and a class-attribute inline compile, both fire. The remaining
+gap is a bare redos-shaped literal in a data structure with **no `re.*` sink** (the pygments
+class). Detecting that is a false-positive hazard — a redos-shaped string is not necessarily a
+compiled regex — so it is left unflagged by design, pinned by
+`negative-redos-literal-in-structure` and a unit test. Closing it safely needs a regex-context
+signal (dataflow to a sink, or a framework marker) and is genuinely deferred, not overlooked. It
+was **not** shaped around the burned pygments case.
+
 ---
 
 ## D-018 — Holdout 2 result: 0/8 detected, 0/2 primary recall, zero false positives

@@ -66,8 +66,8 @@ repositories. Snapshot from
 
 | System | Positive Cases | Negative Controls | Primary Recall | Primary Precision | Findings | Raw Tool Findings | Out Scope | Validation | Tool Evidence | Neg Ctrl Violations |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
-| VeriSec Agent | 3 OSS CVE/PR cases | 13 adversarial controls | 1.00 | 0.50 | 8 | 8 | 0 | 1.00 | 1.00 | 0 |
-| VeriSec Agent promoted CVEs | 6 promoted CVE cases | 13 adversarial controls | 1.00 | 0.64 | 11 | 11 | 0 | 1.00 | 1.00 | 0 |
+| VeriSec Agent | 3 OSS CVE/PR cases | 15 adversarial controls | 1.00 | 0.50 | 8 | 8 | 0 | 1.00 | 1.00 | 0 |
+| VeriSec Agent promoted CVEs | 6 promoted CVE cases | 15 adversarial controls | 1.00 | 0.64 | 11 | 11 | 0 | 1.00 | 1.00 | 0 |
 | Semgrep baseline | 3 OSS CVE/PR cases | 10 isolated scanner controls | 0.00 | 0.00 | 0 | 2 | 2 | 1.00 | 0.00 | 0 |
 | CodeQL baseline | 3 OSS CVE/PR cases | 10 isolated scanner controls | 0.00 | 0.00 | 0 | 10 | 10 | 1.00 | 0.00 | 0 |
 

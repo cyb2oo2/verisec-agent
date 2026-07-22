@@ -79,3 +79,17 @@ def compile_contains_substring() -> re.Pattern[str]:
     # A single-wildcard contains-form is linear. The adjacent-greedy-wildcard
     # ReDoS check must not fire on it: `.*foo.*` is not `.*.*`.
     return re.compile(r".*foo.*")
+
+
+def lookup_parameterized_percent(cursor, user_id: int):
+    # `%s` here is a DB-API placeholder, not string formatting; the params tuple
+    # keeps it safe. Must not be flagged as SQL string formatting.
+    return cursor.execute("SELECT id, name FROM users WHERE id = %s", (user_id,))
+
+
+REGEX_TOKEN_TABLE = [
+    # A redos-shaped raw string living in a data structure with no re.* sink is
+    # not asserted to be a compiled regex; flagging it would be a false positive.
+    (r"(a+)+$", "IDENT"),
+    (r"[0-9]+", "NUMBER"),
+]
