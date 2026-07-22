@@ -23,6 +23,46 @@ from the code.
 
 ---
 
+## D-016 — Promoted-CVE row demoted to `illustrative`, metrics kept visible
+**Date:** 2026-07-22 · **Status:** accepted
+
+**Context:** D-015 established that the promoted-CVE row's `1.00` primary recall comes from
+regex signatures matching the scored patches' literal text, and added a claim boundary
+disclosing it. The disclosure sat beside a row still labelled `status: measured`, so the
+Status column continued to assert a detection measurement the number is not. The claim
+boundary competed with the label, and on a skim the label won.
+
+**Decision:** Add an optional `display_status` override to a benchmark system entry. The
+promoted-CVE row now renders and counts as `illustrative`, not `measured`, so
+`measured_system_count` drops from 4 to 3 and no reader can mistake it for a measured
+detection result. The row's metrics stay computed and visible — recall `1.00` still shows —
+because hiding the number would be a distortion in the opposite direction: the signatures
+do match their patches, and that limited fact is verifiable. The override is guarded to only
+demote: `display_status: "measured"` raises, so it can never inflate a non-measured row into
+a measured one. Metric population keys off the *computed* status, so a demoted row keeps its
+real numbers; only the displayed and counted status carries the override.
+
+**Alternatives:** (a) Blank the metrics when demoting — rejected; removing a verifiable
+number to make a row look worse is the same class of dishonesty as inflating one, and the
+claim boundary already supplies the interpretation. (b) Keep `measured` plus the D-015
+boundary alone (Thread 2 Option C) — rejected; the misleading label persists and the caveat
+loses the skim. (c) Delete the promoted row entirely — rejected; the cases are real and
+their signature-coverage is worth showing, just not as a measurement. (d) Rewrite the
+`py-sql-*` rules generic and re-measure (Thread 2 Option B) — deferred to its own effort; it
+is detector engineering with real false-positive risk (Invariant 4) and needs unseen SQL
+cases held blind, not a relabel.
+
+**Consequences:** `display_status` is a general, auditable lever: any suite-backed row whose
+number does not mean what `measured` implies can be demoted without discarding its metrics,
+and the guard prevents the reverse. The promoted row is no longer citable as a measured
+detection result anywhere the matrix is read. The larger remedy (generic `py-sql-*` rules
+measured on unseen cases) remains open; Holdout 2's reserved Django `_connector` case is the
+natural blind test for it, though partially burned by having been read during sourcing
+(see the Holdout 2 draft). README carries no Status column, so its prose caveat from the
+prior commit already covers it there.
+
+---
+
 ## D-015 — Promoted-CVE recall rests on patch-literal signatures, not detection
 **Date:** 2026-07-22 · **Status:** accepted
 

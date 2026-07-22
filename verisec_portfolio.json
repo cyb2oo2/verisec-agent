@@ -38,7 +38,8 @@
         "label": "VeriSec Agent promoted CVEs",
         "suite": "promoted-cves",
         "negative_suite": "negative-controls",
-        "notes": "Candidate CVEs promoted into measured eval only after audit and property-check verification."
+        "notes": "Illustrative, not a detection measurement: recall reflects regex signatures matching the scored patches' literal text (DEVELOPMENT_LOG.md D-015), not detection that generalizes.",
+        "display_status": "illustrative"
       },
       {
         "label": "Semgrep baseline",

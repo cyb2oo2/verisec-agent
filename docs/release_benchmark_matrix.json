@@ -7,7 +7,7 @@
   ],
   "summary": {
     "error_system_count": 0,
-    "measured_system_count": 4,
+    "measured_system_count": 3,
     "not_run_system_count": 0,
     "skipped_system_count": 0,
     "system_count": 4
@@ -59,8 +59,8 @@
       },
       "negative_baseline": null,
       "negative_suite": "negative-controls",
-      "notes": "Candidate CVEs promoted into measured eval only after audit and property-check verification.",
-      "status": "measured",
+      "notes": "Illustrative, not a detection measurement: recall reflects regex signatures matching the scored patches' literal text (DEVELOPMENT_LOG.md D-015), not detection that generalizes.",
+      "status": "illustrative",
       "suite": "promoted-cves"
     },
     {

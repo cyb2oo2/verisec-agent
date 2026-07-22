@@ -3,7 +3,7 @@
 | System | Status | Positive Cases | Negative Controls | Primary Recall | Primary Precision | Findings | Raw | Out Scope | Validation | Tool Evidence | Neg Ctrl Violations | Notes |
 | --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | --- |
 | VeriSec Agent | measured | 3 | 12 | 1.00 | 0.50 | 8 | 8 | 0 | 1.00 | 1.00 | 0 | AST/dataflow hypotheses with evidence-backed validation bundles. |
-| VeriSec Agent promoted CVEs | measured | 6 | 12 | 1.00 | 0.64 | 11 | 11 | 0 | 1.00 | 1.00 | 0 | Candidate CVEs promoted into measured eval only after audit and property-check verification. |
+| VeriSec Agent promoted CVEs | illustrative | 6 | 12 | 1.00 | 0.64 | 11 | 11 | 0 | 1.00 | 1.00 | 0 | Illustrative, not a detection measurement: recall reflects regex signatures matching the scored patches' literal text (DEVELOPMENT_LOG.md D-015), not detection that generalizes. |
 | Semgrep baseline | measured | 3 | 10 | 0.00 | 0.00 | 0 | 2 | 2 | 1.00 | 0.00 | 0 | Semgrep-compatible captured JSON artifacts scored with the same expected-finding labels. |
 | CodeQL baseline | measured | 3 | 10 | 0.00 | 0.00 | 0 | 10 | 10 | 1.00 | 0.00 | 0 | CodeQL Python security SARIF profile scored from frozen reusable scanner artifacts; live CodeQL reruns on cache miss. |
 

@@ -1173,7 +1173,29 @@ def _benchmark_row(
         baseline=None,
         negative_baseline=None,
         notes=notes,
+        display_status=_display_status_override(item, label),
     )
+
+
+def _display_status_override(item: dict[str, Any], label: str) -> str | None:
+    """Optional relabel of a computed-measured row. May only demote, never inflate.
+
+    A row whose suite actually ran computes ``measured``. ``display_status`` lets a
+    manifest present it under a weaker label without discarding the metrics, for a
+    row whose numbers do not mean what ``measured`` implies (see D-015 / D-016).
+    Forbidding ``measured`` keeps the override from faking a measurement.
+    """
+    value = item.get("display_status")
+    if value is None:
+        return None
+    text = str(value).strip()
+    if not text:
+        return None
+    if text == "measured":
+        raise PortfolioError(
+            f"benchmark_matrix system '{label}': display_status cannot be 'measured'."
+        )
+    return text
 
 
 def _measured_benchmark_row(
@@ -1184,6 +1206,7 @@ def _measured_benchmark_row(
     baseline: dict[str, Any] | None,
     negative_baseline: dict[str, Any] | None,
     notes: str,
+    display_status: str | None = None,
 ) -> dict[str, Any]:
     source = suite or baseline
     if source is None:
@@ -1220,7 +1243,9 @@ def _measured_benchmark_row(
         }
     return {
         "label": label,
-        "status": status,
+        # Metric population above keys off the computed status so a demoted row keeps
+        # its real numbers; only the displayed/counted status carries the override.
+        "status": display_status if display_status is not None else status,
         "suite": suite["label"] if suite is not None else None,
         "negative_suite": negative_suite["label"] if negative_suite is not None else None,
         "baseline": baseline["label"] if baseline is not None else None,

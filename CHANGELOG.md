@@ -55,6 +55,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   reflects regex signatures matching the scored patches' literal text, not detection that
   generalizes; it is not a like-for-like comparison with the scanner rows. No benchmark
   number changed
+- Promoted-CVE benchmark row relabeled from `measured` to `illustrative`, so it no longer
+  reads as a detection measurement; its metrics stay visible. Adds a `display_status`
+  benchmark-manifest field that may only demote a computed-measured row, never inflate one.
+  No benchmark number changed
 
 ### Removed
 
