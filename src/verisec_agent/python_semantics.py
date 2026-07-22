@@ -63,6 +63,10 @@ _REDOS_SHAPE_CHECKS: tuple[re.Pattern[str], ...] = (
     # Overlapping adjacent quantified atoms: a+a+, \w*\w+
     re.compile(r"(?:\w|[.]|\\[wdsWDS])\+(?:\w|[.]|\\[wdsWDS])\+"),
     re.compile(r"(?:\w|[.]|\\[wdsWDS])\*(?:\w|[.]|\\[wdsWDS])\+"),
+    # Adjacent unbounded greedy wildcards: .*.*, .+.+ (polynomial partitioning, the
+    # canonical `.*.*=.*` class). Greedy only: lazy `.*?.*?` does not match, so this
+    # stays clear of the frozen Holdout 2 transformers pattern, which is lazy.
+    re.compile(r"\.[*+]\.[*+]"),
 )
 _TAINT_SOURCE_CALLS = {
     "input",

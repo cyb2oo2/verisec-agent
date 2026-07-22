@@ -23,6 +23,50 @@ from the code.
 
 ---
 
+## D-019 — T-011 first increment: greedy-polynomial ReDoS shape, and what the gap actually is
+**Date:** 2026-07-22 · **Status:** accepted
+
+**Context:** T-011 was framed as "generalize ReDoS detection beyond inline `re.<func>()` call
+syntax to variable-assigned patterns." Investigation with synthetic probes showed that premise
+was largely already satisfied: the semantic layer resolves variable-bound patterns
+(`pat = r"..."; re.compile(pat)`) and recognizes the full `re.*` sink set including `re.split`.
+Both fire today. The Holdout 2 misses (D-018) therefore do not stem from the call-site syntax
+the task named.
+
+Two real gaps remain. (a) `is_redos_prone` catches 7 of 8 classic catastrophic shapes with zero
+false positives, missing only the greedy-polynomial class `.*.*` (the canonical `.*.*=.*` form),
+which `redos_risk_score` already scores 3. (b) Regex literals defined outside any `re.*` call —
+in data structures such as lexer token tuples — are architecturally invisible to the call-site
+analyzer. Gap (b) is higher false-positive risk (a redos-shaped string is not necessarily a
+compiled regex) and is deferred.
+
+**Decision:** Ship gap (a) only: add an adjacent-greedy-wildcard shape check `\.[*+]\.[*+]` to
+`_REDOS_SHAPE_CHECKS`. Design and validation used synthetic and literature patterns exclusively.
+The check is greedy-only by construction, so it provably does not match the frozen Holdout 2
+transformers pattern (which is lazy `.*?`); this was verified explicitly and is the Invariant 1
+guard — the improvement is general, not reverse-engineered from a burned case. Paired positive
+(synthetic `.*.*=.*` hardening) and negative (`.*foo.*` contains-form) unit tests, plus a
+registered eval negative control `negative-redos-contains-nearmiss`.
+
+**Alternatives:** (a) Chase the transformers/pygments misses directly — rejected; they are burned
+holdout cases, and shaping a rule to make them fire is Invariant 1 fraud. (b) Also ship gap (b)
+now — rejected; detecting bare regex literals in data structures is speculative and needs its own
+false-positive analysis and controls. Filed as remaining T-011 scope. (c) Widen to separated
+polynomials `.*X.*` — rejected; `.*foo.*` is linear in practice and a common legitimate
+contains-form, so flagging it would be a false positive. The check targets only the degenerate
+adjacent form.
+
+**Consequences:** VeriSec now detects the greedy-polynomial ReDoS class it previously missed, a
+real capability gain independent of any holdout. No measured benchmark metric moved except the
+negative-control count (12 → 13 from the new control). The change was **not** measured against
+Holdout 2, and must not be: the honest test of whether generalization improved is a future
+Holdout 3 on fresh cases. The insertion of the new control fixture also surfaced and confirmed a
+sharp edge — adding a function mid-file shifts the triple-quoted control's line numbers and
+reintroduces a masking false positive; the fixture is appended at end-of-file, and the gate
+caught the regression when it was not.
+
+---
+
 ## D-018 — Holdout 2 result: 0/8 detected, 0/2 primary recall, zero false positives
 **Date:** 2026-07-22 · **Status:** accepted
 

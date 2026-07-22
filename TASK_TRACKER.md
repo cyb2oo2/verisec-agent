@@ -66,18 +66,25 @@ The old holdout pair (Django CVE-2023-46695, mechanize 0.4.6) stays burned and h
 ### T-011 — Generalize detection rules beyond exact call-site syntax
 **Status:** active · **highest-value detector work**
 
-Holdout 2 (D-018) and D-015 both show the same root cause: `py-regex-redos-hardening` and the
-`py-sql-*` family key on a narrow surface form (`re.<func>(<inline pattern>`, exact literal
-identifiers) that real hardening commits rarely use. On blind data this produced 0/2 recall on
-cases hand-picked to match the assumption. Widen detection to reach variables, `re.split`,
-`re.compile` with flags on a separate line, regex literals in data structures (lexer token
-tuples), and validation/parameterization added in place — moving signal into `python_semantics.py`
-(AST/dataflow) per the CLAUDE.md preference, not more regex.
+**Investigation finding (2026-07-22, D-019):** the original premise was largely wrong. Synthetic
+probes showed the semantic layer *already* resolves variable-bound patterns and the full `re.*`
+sink set including `re.split`. The Holdout 2 misses do not stem from call-site syntax.
 
-Hard constraint: **validate on new, unseen cases only.** The Holdout 2 and pilot cases are
-burned; measuring a widened rule against them is Invariant 1 fraud. Needs paired negative
-controls (Invariant 4) — a wider rule is a false-positive risk, and VeriSec's one demonstrated
-strength today is its zero-FP precision. This subsumes Thread 2 Option B (generic `py-sql-*`).
+**Shipped (D-019):** the greedy-polynomial ReDoS shape `.*.*`, previously missed by
+`is_redos_prone`. Synthetic-validated, greedy-only (does not touch the burned transformers
+pattern), with a registered negative control.
+
+**Remaining scope:**
+- **Regex literals in data structures** (lexer token tuples, no `re.*` call) — the pygments-class
+  gap, architecturally invisible today. Higher false-positive risk (a redos-shaped string is not
+  necessarily a compiled regex); needs its own FP analysis and controls before shipping.
+- **Generic `py-sql-*`** (subsumes Thread 2 Option B): the SQL family matches patch-literal
+  identifiers (D-015) and cannot fire on any unseen SQL fix. Rewriting it to detect
+  validation/parameterization-added shapes is real work with real FP risk.
+
+Hard constraints unchanged: **validate on new, unseen cases only** (Holdout 2 and pilot are
+burned — Invariant 1); **paired negative controls first** (Invariant 4). The honest test of
+whether generalization improved is a future Holdout 3, not a re-run of Holdout 2.
 
 ### T-010 — Verification argv rendering crashes on braces in a command
 **Status:** active

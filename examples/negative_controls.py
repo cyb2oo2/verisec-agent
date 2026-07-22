@@ -73,3 +73,9 @@ import re
 
 TOKEN = re.compile(r"(a+)+$")
 '''
+
+
+def compile_contains_substring() -> re.Pattern[str]:
+    # A single-wildcard contains-form is linear. The adjacent-greedy-wildcard
+    # ReDoS check must not fire on it: `.*foo.*` is not `.*.*`.
+    return re.compile(r".*foo.*")

@@ -17,7 +17,11 @@
           "notes": "shell=False with argv list should not be treated as command injection."
         }
       ],
-      "tags": ["negative-control", "python", "command-injection"]
+      "tags": [
+        "negative-control",
+        "python",
+        "command-injection"
+      ]
     },
     {
       "id": "negative-shell-docs",
@@ -36,7 +40,11 @@
           "notes": "Dangerous shell=True appears only in a comment and string literal."
         }
       ],
-      "tags": ["negative-control", "python", "docs"]
+      "tags": [
+        "negative-control",
+        "python",
+        "docs"
+      ]
     },
     {
       "id": "negative-shell-triple-quoted",
@@ -55,7 +63,11 @@
           "notes": "Dangerous shell=True appears only inside a triple-quoted code sample."
         }
       ],
-      "tags": ["negative-control", "python", "docs"]
+      "tags": [
+        "negative-control",
+        "python",
+        "docs"
+      ]
     },
     {
       "id": "negative-tls-verify-true",
@@ -74,7 +86,11 @@
           "notes": "Explicit verify=True should not be reported as TLS verification disabled."
         }
       ],
-      "tags": ["negative-control", "python", "tls"]
+      "tags": [
+        "negative-control",
+        "python",
+        "tls"
+      ]
     },
     {
       "id": "negative-tls-docs",
@@ -93,7 +109,12 @@
           "notes": "verify=False appears only in documentation text."
         }
       ],
-      "tags": ["negative-control", "python", "docs", "tls"]
+      "tags": [
+        "negative-control",
+        "python",
+        "docs",
+        "tls"
+      ]
     },
     {
       "id": "negative-yaml-safe-loader",
@@ -118,7 +139,11 @@
           "notes": "Explicit SafeLoader must not be classified as unsafe YAML loading."
         }
       ],
-      "tags": ["negative-control", "python", "yaml"]
+      "tags": [
+        "negative-control",
+        "python",
+        "yaml"
+      ]
     },
     {
       "id": "negative-parameterized-sql",
@@ -137,7 +162,11 @@
           "notes": "Parameterized query should not be treated as SQL string formatting."
         }
       ],
-      "tags": ["negative-control", "python", "sql"]
+      "tags": [
+        "negative-control",
+        "python",
+        "sql"
+      ]
     },
     {
       "id": "negative-strong-hash",
@@ -156,7 +185,11 @@
           "notes": "SHA-256 cache key should not be classified as weak hash usage."
         }
       ],
-      "tags": ["negative-control", "python", "crypto"]
+      "tags": [
+        "negative-control",
+        "python",
+        "crypto"
+      ]
     },
     {
       "id": "negative-weak-hash-docs",
@@ -175,7 +208,12 @@
           "notes": "hashlib.md5 appears only as documentation text."
         }
       ],
-      "tags": ["negative-control", "python", "docs", "crypto"]
+      "tags": [
+        "negative-control",
+        "python",
+        "docs",
+        "crypto"
+      ]
     },
     {
       "id": "negative-literal-eval",
@@ -194,7 +232,11 @@
           "notes": "ast.literal_eval is intentionally outside eval/exec matching."
         }
       ],
-      "tags": ["negative-control", "python", "dynamic-execution"]
+      "tags": [
+        "negative-control",
+        "python",
+        "dynamic-execution"
+      ]
     },
     {
       "id": "negative-bounded-regex",
@@ -213,7 +255,34 @@
           "notes": "Bounded slug regex should not be classified as ReDoS hardening or risk."
         }
       ],
-      "tags": ["negative-control", "python", "regex"]
+      "tags": [
+        "negative-control",
+        "python",
+        "regex"
+      ]
+    },
+    {
+      "id": "negative-redos-contains-nearmiss",
+      "diff": "negative_controls/redos_contains_nearmiss.diff",
+      "repo": "..",
+      "metadata": {
+        "project": "verisec/negative-controls",
+        "language": "python",
+        "vulnerability_class": "redos-near-miss"
+      },
+      "expected_findings": [
+        {
+          "rule_id": "py-regex-redos",
+          "file_path": "examples/negative_controls.py",
+          "role": "negative-control",
+          "notes": "A single-wildcard contains-form (.*foo.*) is linear and must not trip the adjacent-greedy-wildcard (.*.*) ReDoS check."
+        }
+      ],
+      "tags": [
+        "negative-control",
+        "python",
+        "regex"
+      ]
     },
     {
       "id": "negative-redos-triple-quoted",
@@ -232,7 +301,12 @@
           "notes": "Nested quantifier appears only inside a triple-quoted code sample. Covers scan_mode=\"python-text\", which negative-shell-triple-quoted cannot reach."
         }
       ],
-      "tags": ["negative-control", "python", "docs", "regex"]
+      "tags": [
+        "negative-control",
+        "python",
+        "docs",
+        "regex"
+      ]
     }
   ]
 }

@@ -54,6 +54,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Changed
 
+- ReDoS shape detection now recognizes the greedy adjacent-wildcard polynomial class
+  (`.*.*`, the canonical `.*.*=.*` form), previously missed. Greedy-only by design, with a
+  paired negative control (`.*foo.*` contains-forms stay linear/quiet). Negative controls 12 → 13
 - README restructured for operator-first onboarding; lab commands deferred
 - ReDoS regex fallback no longer treats bare `max_length` / length bounds as ReDoS
 - Benchmark claim boundaries now disclose that the promoted-CVE row's primary recall

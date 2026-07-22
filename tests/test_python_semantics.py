@@ -229,6 +229,13 @@ def test_django_shaped_username_field_prefers_unicode_over_redos() -> None:
         (r"", False),
         (r"a+b+", True),
         (r"\w*\w+", True),
+        # Adjacent greedy unbounded wildcards — canonical polynomial class.
+        (r".*.*=.*", True),
+        (r"x.*.*y", True),
+        # Near miss: a single wildcard / legitimate contains-form is linear, not ReDoS.
+        (r".*foo.*", False),
+        (r"^.*=.*$", False),
+        (r".*?.*?", False),
     ],
 )
 def test_is_redos_prone_table(pattern: str, expected: bool) -> None:
@@ -264,6 +271,47 @@ def test_redos_hardening_pattern_delta_via_window() -> None:
     assert "adds-hardening" in hardening.analysis_notes
     assert "Family: redos" in hardening.analysis_notes
     assert not any(f.rule_id == "py-regex-redos" for f in findings)
+
+
+def test_redos_hardening_greedy_polynomial_pattern_delta() -> None:
+    """Adjacent greedy wildcards `.*.*` are the canonical polynomial ReDoS class.
+
+    Synthetic fixture, not any holdout case. The check is greedy-only, so the
+    frozen Holdout 2 transformers pattern (lazy `.*?`) is deliberately unaffected.
+    """
+    diff = '''diff --git a/router.py b/router.py
+--- a/router.py
++++ b/router.py
+@@ -1,2 +1,2 @@
+ import re
+-MATCH = re.compile(r".*.*=.*")
++MATCH = re.compile(r"[^=]*=.*")
+'''
+    findings = generate_hypotheses(
+        evidence_windows(parse_unified_diff(diff)),
+        min_confidence=0.35,
+    )
+
+    assert any(f.rule_id == "py-regex-redos-hardening" for f in findings)
+    assert not any(f.rule_id == "py-regex-redos" for f in findings)
+
+
+def test_legitimate_contains_regex_not_flagged_as_redos() -> None:
+    """Near-miss control: a single-wildcard contains-form is linear, must stay quiet."""
+    diff = '''diff --git a/search.py b/search.py
+--- a/search.py
++++ b/search.py
+@@ -1,2 +1,3 @@
+ import re
+ def find(text):
++    return re.search(r".*foo.*", text)
+'''
+    findings = generate_hypotheses(
+        evidence_windows(parse_unified_diff(diff)),
+        min_confidence=0.35,
+    )
+
+    assert not any(f.family == "redos" for f in findings)
 
 
 def test_redos_introduces_risk_on_tainted_input() -> None:
