@@ -82,6 +82,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Fixed
 
+- Verification commands whose argv contains braces that are not VeriSec placeholders
+  — a `{1,36}` regex quantifier, a JSON literal, an f-string inside a `-c` script — now
+  render and run instead of aborting the review. Only the defined `{python}` / `{tool_dir}`
+  placeholders are expanded; every other brace is preserved verbatim
+- Evaluation cases materialized from a local `repo` plus `base_ref` / `head_ref` (no
+  `repo_url`) now review an isolated checkout at `head_ref` instead of the caller's working
+  tree at whatever `HEAD` happened to be. Multi-line string masking, which resolves spans by
+  patched-file line number, no longer consults the wrong revision when `head_ref != HEAD`
 - Parameterized SQL using `%s` / `%(name)s` DB-API placeholders
   (`execute("... = %s", params)`) is no longer flagged as SQL string formatting. The regex
   fallback matched any `SELECT ... %`; it now matches string-then-% formatting only, and real

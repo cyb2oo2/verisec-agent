@@ -23,6 +23,40 @@ from the code.
 
 ---
 
+## D-020 — Two materialization/rendering defects fixed: brace argv and head_ref checkout
+**Date:** 2026-07-22 · **Status:** accepted
+**Context:** Two independent infrastructure bugs surfaced by Holdout 2 (D-018), neither a detector
+change. (1) T-010: `verification.py` rendered argv with `str.format(**substitutions)`, so any argv
+token containing an unrelated `{...}` — a `{1,36}` regex quantifier, a JSON literal, an f-string in
+a `-c` script — crashed. A `KeyError` from `.format()` is not the `ValueError` the render guard
+catches, so it aborted the whole run rather than degrading to a policy block. (2) T-009:
+`_materialize_case`'s `git_existing_repo` branch (repo source, no repo_url) computed the diff from
+`base_ref..head_ref` correctly but returned `case.repo_path` — the caller's working tree at whatever
+`HEAD` was, not a checkout at `head_ref`. `_file_string_lines` resolves multi-line string spans by
+patched-file line number assuming the checkout is `head_ref` (D-008), so for any case where
+`head_ref != HEAD` masking silently consulted the wrong revision.
+**Decision:** (1) Replace `str.format` with `_expand_placeholders`, a regex that substitutes only
+the named `{placeholder}` tokens we define (`{python}`, `{tool_dir}`) and leaves every other brace
+byte-for-byte intact. (2) Route the repo branch through `_checkout_case_repo(ref=head_ref)` — the
+exact isolated-clone path the `repo_url` branch already uses and which T-008 confirmed works with a
+local path source (D-014). Returned `repo_path`, `source_fetch_mode`, and `source_cache_path` now
+come from that checkout; `source_kind` stays `git_existing_repo` (nothing consumes it, but the
+distinction is worth keeping).
+**Alternatives:** T-010 — escaping braces by doubling (`{{`) before `.format()`: fragile, mutates
+tokens, and still fails on unbalanced braces. T-009 — `git worktree add` from the caller's repo:
+cheaper (shares the object store) but registers a worktree in the user's real `.git`, a side effect
+on an untrusted-input tool; the isolated clone is the already-proven, side-effect-free path. Not
+retiring the unused `source_kind` string: out of scope for a defect fix.
+**Consequences:** An unknown but well-formed `{identifier}` placeholder now passes through literally
+instead of raising — safer (a stray literal in argv is inert) but it will not catch a config typo;
+acceptable. The repo+refs case form now pays one isolated checkout instead of reading the working
+tree in place; no measured suite uses that form today (confirmed — only `repo_url` cases exist), so
+nothing published moves. The pygments Holdout-2 property check that died with `KeyError: '1,36'`
+(D-018) is fixed at the renderer, so its config no longer needs the brace hardening T-010 floated;
+that config is frozen holdout material and stays untouched (Invariant 1). Both fixes carry a
+regression test asserting the previously-wrong behavior: a `{1,36}` argv rendering intact, and a
+`head_ref != HEAD` repo materializing the `head_ref` revision.
+
 ## D-019 — T-011 first increment: greedy-polynomial ReDoS shape, and what the gap actually is
 **Date:** 2026-07-22 · **Status:** accepted
 

@@ -28,28 +28,6 @@ through `case-audit` → `case-promote`; do not merge into
 
 ## Backlog
 
-### T-009 — `repo` materialization returns a checkout at the wrong revision
-**Status:** active
-
-`_materialize_case` in `src/verisec_agent/evaluation.py` (the `git_existing_repo` branch,
-~L493-505) computes `git diff base_ref head_ref` correctly but returns `repo_path` pointing at
-the existing working tree, which is at whatever `HEAD` happens to be — not a checkout at
-`head_ref`. The `repo_url` branch a few lines above does check out `head_ref` first.
-
-Consequence: for any case whose `head_ref` is not the current `HEAD`, the diff and the
-checkout describe different revisions. `_file_string_lines` resolves multi-line string spans
-by patched-file line number and explicitly assumes "the checkout is the patched revision"
-(D-008), so masking silently consults the wrong lines. Findings do not error; they are just
-computed against mismatched source.
-
-Found while building T-008, which works around it by using `repo_url` with a local path
-(D-014). No measured suite uses the `repo` + refs form today, so nothing published is
-affected — worth confirming that before changing anything.
-
-Fix is likely to check out `head_ref` into an isolated worktree on this branch as the
-`repo_url` path does. Needs a regression test where `head_ref != HEAD` and the two revisions
-differ in a multi-line string, which is the case that currently passes while being wrong.
-
 ### T-003 — A genuinely blind holdout for the next measured claim
 **Status:** done
 
@@ -92,17 +70,6 @@ Hard constraints unchanged: **validate on new, unseen cases only** (Holdout 2 an
 burned — Invariant 1); **paired negative controls first** (Invariant 4). The honest test of
 whether generalization improved is a future Holdout 3, not a re-run of Holdout 2.
 
-### T-010 — Verification argv rendering crashes on braces in a command
-**Status:** active
-
-`verification.py` (~L227) renders command argv with `arg.format(**substitutions)` to expand
-`{python}` etc. Any argv token containing an unrelated `{...}` crashes — Holdout 2's pygments
-property check died with `KeyError: '1,36'` from a `{1,36}` regex quantifier. This is common in
-`-c` scripts (regex, JSON, f-strings). Fix: escape non-placeholder braces or use an explicit
-sentinel substitution instead of `str.format`. Add a regression test with a `{n,m}` argv. The
-matching flaw in the pygments config (embedding raw braces) should also be hardened once the
-renderer is fixed. Neither is detector tuning; surfaced by D-018 but independent of it.
-
 ### T-004 — Resolve the two stale worktrees
 **Status:** active
 
@@ -131,6 +98,28 @@ required" property is central to the project's positioning.
 ---
 
 ## Done
+
+### T-010 — Verification argv rendering crashes on braces in a command
+**Completed:** 2026-07-22
+
+`verification.py` rendered argv with `str.format`, so any non-placeholder `{...}` — a `{1,36}`
+regex quantifier, JSON, an f-string in a `-c` script — crashed the whole run (the `KeyError`
+escaped the `ValueError`-only render guard). Replaced with `_expand_placeholders`, a regex that
+substitutes only the defined `{python}` / `{tool_dir}` tokens and leaves every other brace intact.
+Regression test asserts a `{1,36}` argv renders and executes. The pygments Holdout-2 config that
+triggered this (D-018) is fixed at the renderer and needs no change; it stays frozen (Invariant 1).
+Decision and rejected alternatives: D-020.
+
+### T-009 — `repo` materialization returned a checkout at the wrong revision
+**Completed:** 2026-07-22
+
+`_materialize_case`'s `git_existing_repo` branch computed `base_ref..head_ref` correctly but
+returned the caller's working tree at `HEAD`, not a checkout at `head_ref`; for `head_ref != HEAD`,
+multi-line string masking (which assumes the checkout is `head_ref`, D-008) consulted the wrong
+lines. Fixed by routing through `_checkout_case_repo(ref=head_ref)` — the same isolated-clone path
+the `repo_url` branch uses and T-008 proved works with a local source (D-014). Regression test
+parks the working tree at `base_ref` and asserts the materialized checkout is `head_ref`. No
+measured suite uses the `repo` + refs form, so nothing published moved (confirmed). Decision: D-020.
 
 ### T-008 — Real-world false-positive corpus from self-history
 **Completed:** 2026-07-22

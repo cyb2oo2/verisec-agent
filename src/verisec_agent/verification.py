@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import ctypes
 import os
+import re
 import shlex
 import subprocess
 import sys
@@ -224,9 +225,9 @@ def _render_invocation(command: VerificationCommand, *, tool_dir: Path) -> _Rend
     }
     if command.command_argv:
         argv_template = command.command_argv
-        argv = tuple(arg.format(**substitutions) for arg in command.command_argv)
+        argv = tuple(_expand_placeholders(arg, substitutions) for arg in command.command_argv)
     else:
-        rendered_command = command.command.format(**substitutions)
+        rendered_command = _expand_placeholders(command.command, substitutions)
         argv_template = _split_command_line(command.command)
         argv = _split_command_line(rendered_command)
     if not argv:
@@ -236,6 +237,19 @@ def _render_invocation(command: VerificationCommand, *, tool_dir: Path) -> _Rend
         argv=argv,
         argv_template=argv_template,
     )
+
+
+_PLACEHOLDER_RE = re.compile(r"\{([A-Za-z_][A-Za-z0-9_]*)\}")
+
+
+def _expand_placeholders(text: str, substitutions: dict[str, str]) -> str:
+    # Expand only the named `{placeholder}` tokens we define; leave every other brace
+    # untouched. str.format would treat an unrelated `{1,36}` regex quantifier or JSON
+    # literal in a `-c` script as a field reference and crash (T-010).
+    def _replace(match: re.Match[str]) -> str:
+        return substitutions.get(match.group(1), match.group(0))
+
+    return _PLACEHOLDER_RE.sub(_replace, text)
 
 
 def _split_command_line(command: str) -> tuple[str, ...]:

@@ -1,10 +1,11 @@
+import sys
 from pathlib import Path
 
 from verisec_agent.config import load_config
 from verisec_agent.models import VerificationCommand
 from verisec_agent.policy import ReviewPolicy, evaluate_verification_command
 from verisec_agent.tracing import TraceLog
-from verisec_agent.verification import VerificationRunner
+from verisec_agent.verification import VerificationRunner, _render_invocation
 
 
 def test_policy_blocks_disallowed_adapter_and_dangerous_command() -> None:
@@ -140,3 +141,43 @@ def test_verification_runner_executes_argv_without_shell_expansion(tmp_path: Pat
     assert result.command_argv[0]
     assert (tmp_path / "created.txt").exists()
     assert not (tmp_path / "shell-expanded.txt").exists()
+
+
+def test_render_invocation_preserves_non_placeholder_braces(tmp_path: Path) -> None:
+    # A `{n,m}` regex quantifier is not a placeholder and must survive rendering intact;
+    # str.format would raise KeyError/ValueError and abort the whole run (T-010).
+    command = VerificationCommand(
+        name="brace-argv",
+        command="",
+        adapter="custom",
+        command_argv=("{python}", "-c", "import re; re.compile(r'a{1,36}')"),
+    )
+
+    invocation = _render_invocation(command, tool_dir=tmp_path)
+
+    assert invocation.argv[0] == sys.executable
+    assert invocation.argv[2] == "import re; re.compile(r'a{1,36}')"
+    assert invocation.argv_template == command.command_argv
+
+
+def test_verification_runner_runs_command_with_regex_quantifier(tmp_path: Path) -> None:
+    output_dir = tmp_path / "bundle"
+    trace = TraceLog(output_dir / "trace.jsonl")
+    runner = VerificationRunner(tmp_path, output_dir, trace, policy=ReviewPolicy())
+
+    result = runner.run(
+        VerificationCommand(
+            name="quantifier",
+            command="",
+            adapter="custom",
+            command_argv=(
+                "{python}",
+                "-c",
+                "import re; assert re.match(r'a{1,3}$', 'aaa')",
+            ),
+        )
+    )
+
+    assert result.policy_status != "blocked"
+    assert result.passed
+    assert result.exit_code == 0
