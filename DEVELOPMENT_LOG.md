@@ -23,6 +23,40 @@ from the code.
 
 ---
 
+## D-017 — Holdout 2 frozen at 8 cases in three groups
+**Date:** 2026-07-22 · **Status:** accepted
+
+**Context:** The pilot holdout (D-002) is burned, and D-015 showed the promoted suite never
+measured blind detection. A second holdout was needed. Sourcing (recorded in
+`docs/HOLDOUT_2.md`) produced eight verified cases across three groups: same-class
+primary-eligible (n=2), same-class removal-shape (n=3, no primary), and open-class drawn
+mechanically (n=3, no coverage).
+
+**Decision:** Freeze the set now, at detector commit `0ca2df5` (detectors unchanged since
+`d4bb069`), without running it. Freezing commits the locked case file, eight property-check
+configs, and the protocol; the single measured run is a separate deliberate action so the
+blind property is spent knowingly, not as a side effect of assembling the set. Every fix
+commit was verified upstream; `partition-audit --fail-on-overlap` passes (8 cases, 0 overlap)
+against all three reference manifests; three property checks were run against real patched
+files and all eight parse.
+
+**Alternatives:** (a) Freeze and run in one step — rejected; the run burns the blind property
+and must be an explicit, owner-triggered act, matching the pilot. (b) Wait for more
+primary-eligible cases — rejected; only two same-class fixes in the surveyed pool match the
+detector's in-place-hardening assumption, and that scarcity is itself a reportable finding,
+not a reason to stall. (c) Wire the holdout into the release portfolio — forbidden; a holdout
+must never enter a measured suite (Invariant 3), so it stays a standalone case file run once.
+
+**Consequences:** Primary recall will be computed over Group A (n=2) only — a point
+observation, too small to separate a weak detector from an unlucky draw, and labelled as such.
+Groups B and C feed noise and precision, never recall. Detectors must not change against these
+cases after the run (Invariant 1). The reserved Django `_connector` case remains the natural
+blind test for a generic `py-sql-*` rule (Thread 2 Option B), partially burned by having been
+read during sourcing. The run command and an empty Results table are in `docs/HOLDOUT_2.md`;
+results get published whatever they say.
+
+---
+
 ## D-016 — Promoted-CVE row demoted to `illustrative`, metrics kept visible
 **Date:** 2026-07-22 · **Status:** accepted
 

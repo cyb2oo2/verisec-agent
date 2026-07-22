@@ -51,21 +51,21 @@ Fix is likely to check out `head_ref` into an isolated worktree on this branch a
 differ in a multi-line string, which is the case that currently passes while being wrong.
 
 ### T-003 — A genuinely blind holdout for the next measured claim
-**Status:** blocked
+**Status:** review (frozen, not yet run)
 
-The current holdout pair (Django CVE-2023-46695, mechanize 0.4.6) is burned for blind evaluation —
-detectors were tuned after observing the failure (D-002). Any future blind recall claim needs a
-newly frozen holdout selected at a stated detector commit and audited disjoint via
-`partition-audit`.
+Holdout 2 is **frozen** as of 2026-07-22 at detector commit `0ca2df5`: 8 verified cases in
+three groups (2 primary-eligible ReDoS, 3 removal-shape noise, 3 open-class), all fix commits
+verified upstream, `partition-audit --fail-on-overlap` clean (0 overlap). Case set
+`examples/holdout_2_cases.json`, configs `examples/holdout2_*.toml`, protocol
+`docs/HOLDOUT_2.md`, rationale D-017.
 
-Blocked on: candidate cases not yet used in any measured suite, and a decision on freeze commit.
+Remaining: the **single measured run** (`verisec eval --cases examples/holdout_2_cases.json`),
+an explicit owner-triggered action — it burns the blind property and clones the eight upstream
+repos (needs network). Populate the Results table in `docs/HOLDOUT_2.md` once, then never
+re-tune detectors against these cases (Invariant 1).
 
-**Priority note (2026-07-21):** a repository-level review ranked this the highest-value open item.
-Re-reading the blocker, it is a *decision* rather than a dependency — `partition-audit` already
-exists to prove disjointness, and nothing engineering-side is missing. Supporting evidence: the one
-time VeriSec ran against unlabeled real code (its own PR, D-008) it produced 11 findings, all false
-positives, while the curated benchmark reported 1.00 recall and zero unexpected findings. That gap
-is currently invisible to CI. Recommended sequence was T-007 → real-world FP corpus → this.
+The old holdout pair (Django CVE-2023-46695, mechanize 0.4.6) stays burned and historical
+(D-002); this supersedes the *need* but not that record.
 
 ### T-004 — Resolve the two stale worktrees
 **Status:** active
