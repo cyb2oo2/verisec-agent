@@ -23,6 +23,71 @@ from the code.
 
 ---
 
+## D-015 — Promoted-CVE recall rests on patch-literal signatures, not detection
+**Date:** 2026-07-22 · **Status:** accepted
+
+**Context:** While pinning the expected rule ID for a Holdout 2 candidate (Django
+CVE-2025-64459), reading the `py-sql-*` rule definitions revealed that their patterns are
+verbatim strings from the specific patches they score. Checking all six promoted CVE cases,
+five match on a project-specific literal introduced by that exact patch:
+
+- `py-sql-identifier-injection` → `\bFORBIDDEN_ALIAS_PATTERN\s*=` (Django 2022-28346)
+- `py-sql-explain-option-injection` → `EXPLAIN_OPTIONS_PATTERN\.fullmatch\(option_name\)` (Django 2022-28347)
+- `py-sql-lookup-injection` → `extract_trunc_lookup_pattern\.fullmatch\(self\.(lookup_name|kind)\)` (Django 2022-34265)
+- `py-sql-delimiter-injection` → `def\s+test_string_agg_delimiter_escaping\s*\(` — a **test function name** (Django 2020-7471)
+- `py-dos-algorithmic-complexity` → `exceeds_maximum_length_ratio\(...password, self.max_similarity, value_part\)` (Django 2021-45115)
+
+The sixth, `sqlparse-cve-2023-30608`, matches `py-regex-redos-hardening`, whose pattern is
+generic ReDoS shape-matching with sqlparse-specific alternations (`PROCESS_AS_KEYWORD\s*=\s*object\(\)`)
+appended; the sqlparse patch adds exactly that line. Every one of the 11 findings in the
+promoted suite has `analysis_scope` empty and zero dataflow steps: the semantic AST/dataflow
+layer contributes nothing, detection is entirely regex fallback, and the fallback patterns
+are keyed to the scored patches.
+
+`docs/release_benchmark_matrix.json` publishes this suite as `status: measured`,
+`primary_recall: 1.0`, beside Semgrep and CodeQL at `0.00`. The existing claim boundary
+qualifies scanner *configuration* ("a zero recall here means those configurations did not
+match the labeled changed lines") but does not disclose that VeriSec's own recall comes from
+signatures written to the scored patches' literal text. As published, a general-purpose
+scanner is compared against patch-specific signatures without that being stated.
+
+This is the failure mode Invariant 1, D-002, and D-010 already guard against — tuning to
+observed cases — surfacing here as a systematic property of the promoted suite rather than a
+single mislabelled case. No claim is made that it was deliberate: writing a rule while reading
+a patch produces exactly this, and D-010 already found one case (`django-cve-2023-36053`) that
+the same literal-matching approach could not satisfy.
+
+**Decision:** Record the finding now; do not silently regenerate or relabel. The measurement
+is not falsified in the sense that the findings are real regex matches on real patches — but
+the published framing implies detection generalization the evidence does not support (Invariant
+8). Two consequences follow immediately for Holdout 2 (see D-014's sibling draft): no `py-sql-*`
+rule can fire on CVE-2025-64459, whose patch adds `_connector` validation matching none of the
+literals, so it moves to the no-primary group; and transformers becomes the only primary-eligible
+case in the holdout — and the only case that exercises `py-regex-redos-hardening`'s generic
+portion, which no measured case has ever tested.
+
+**Alternatives considered:** (a) Regenerate the benchmark to drop or relabel the promoted row
+now — rejected as premature; whether the row should be `measured` at all, and how the claim
+boundary should read, is an owner decision, and Invariant 2 forbids hand-editing the numbers
+regardless. (b) Treat this as acceptable because the findings are genuine matches — rejected;
+the objection is not that the matches are fake but that "measured 1.00 recall" beside "scanner
+0.00" reads as a detection-quality comparison, and this one is not. (c) Rewrite the `py-sql-*`
+rules to be generic before saying anything — rejected; that changes detector behavior against
+observed cases, which is the very thing under scrutiny, and it would erase the evidence before
+it is recorded.
+
+**Consequences:** The promoted-CVE row's `measured`/`1.00` framing is under question and should
+not be cited as evidence of detection quality until the claim boundary discloses the
+signature-to-patch coupling or the rules are made generic and re-measured on unseen cases.
+`py-sql-string-format` (a genuinely generic `(SELECT|INSERT|UPDATE|DELETE).*(f"|%|.format()`
+pattern) fires on none of the promoted cases, so the generic SQL detector has no measured
+positive at all. Any future rule whose pattern contains a CamelCase/UPPER_SNAKE identifier or a
+`test_*` function name should be treated as a candidate patch-literal signature and audited the
+same way. Holdout 2 remains unfrozen; transformers is now its highest-value case precisely
+because it is the one primary-eligible detection the promoted suite never actually tested.
+
+---
+
 ## D-014 — Reviewer noise is measured on unlabeled real commits, and only measured
 **Date:** 2026-07-22 · **Status:** accepted
 
