@@ -32,6 +32,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   primary recall, precision, findings, and validation coverage are unchanged — only
   the control denominator grew.
 
+- Holdout 2 (`docs/HOLDOUT_2.md`, `examples/holdout_2_cases.json`): a second blind evaluation,
+  8 verified upstream cases in three groups, frozen at detector commit `0ca2df5` and run once.
+  Result: 0 findings across all 8 cases, primary recall 0/2, zero false positives. Both primary
+  ReDoS cases missed structurally (the rule matches a narrow call-site syntax real fixes rarely
+  use). Detectors are not tuned against these now-burned cases
 - Self-history noise corpus (`examples/self_history_cases.json`): every parented commit on
   this repository's `origin/main` replayed as a benign change with no expected findings,
   wired into the release portfolio as the `self-history-noise` suite. Measures 22 findings

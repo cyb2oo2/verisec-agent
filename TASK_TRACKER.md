@@ -51,21 +51,44 @@ Fix is likely to check out `head_ref` into an isolated worktree on this branch a
 differ in a multi-line string, which is the case that currently passes while being wrong.
 
 ### T-003 — A genuinely blind holdout for the next measured claim
-**Status:** review (frozen, not yet run)
+**Status:** done
 
-Holdout 2 is **frozen** as of 2026-07-22 at detector commit `0ca2df5`: 8 verified cases in
-three groups (2 primary-eligible ReDoS, 3 removal-shape noise, 3 open-class), all fix commits
-verified upstream, `partition-audit --fail-on-overlap` clean (0 overlap). Case set
-`examples/holdout_2_cases.json`, configs `examples/holdout2_*.toml`, protocol
-`docs/HOLDOUT_2.md`, rationale D-017.
-
-Remaining: the **single measured run** (`verisec eval --cases examples/holdout_2_cases.json`),
-an explicit owner-triggered action — it burns the blind property and clones the eight upstream
-repos (needs network). Populate the Results table in `docs/HOLDOUT_2.md` once, then never
-re-tune detectors against these cases (Invariant 1).
+Holdout 2 was frozen and **run once** on 2026-07-22 at detector commit `0ca2df5`. Result:
+**0 findings across all 8 cases, primary recall 0/2, zero false positives** (D-018). Both
+primary ReDoS cases missed structurally — the rule keys on `re.<func>(<inline pattern>` and
+real fixes use variables / `re.split` / lexer token tuples. Case set, configs, protocol, and
+the populated Results table are committed (`docs/HOLDOUT_2.md`). Detectors must not be tuned
+against these now-burned cases (Invariant 1). Follow-ups spun out as T-010 and T-011.
 
 The old holdout pair (Django CVE-2023-46695, mechanize 0.4.6) stays burned and historical
-(D-002); this supersedes the *need* but not that record.
+(D-002).
+
+### T-011 — Generalize detection rules beyond exact call-site syntax
+**Status:** active · **highest-value detector work**
+
+Holdout 2 (D-018) and D-015 both show the same root cause: `py-regex-redos-hardening` and the
+`py-sql-*` family key on a narrow surface form (`re.<func>(<inline pattern>`, exact literal
+identifiers) that real hardening commits rarely use. On blind data this produced 0/2 recall on
+cases hand-picked to match the assumption. Widen detection to reach variables, `re.split`,
+`re.compile` with flags on a separate line, regex literals in data structures (lexer token
+tuples), and validation/parameterization added in place — moving signal into `python_semantics.py`
+(AST/dataflow) per the CLAUDE.md preference, not more regex.
+
+Hard constraint: **validate on new, unseen cases only.** The Holdout 2 and pilot cases are
+burned; measuring a widened rule against them is Invariant 1 fraud. Needs paired negative
+controls (Invariant 4) — a wider rule is a false-positive risk, and VeriSec's one demonstrated
+strength today is its zero-FP precision. This subsumes Thread 2 Option B (generic `py-sql-*`).
+
+### T-010 — Verification argv rendering crashes on braces in a command
+**Status:** active
+
+`verification.py` (~L227) renders command argv with `arg.format(**substitutions)` to expand
+`{python}` etc. Any argv token containing an unrelated `{...}` crashes — Holdout 2's pygments
+property check died with `KeyError: '1,36'` from a `{1,36}` regex quantifier. This is common in
+`-c` scripts (regex, JSON, f-strings). Fix: escape non-placeholder braces or use an explicit
+sentinel substitution instead of `str.format`. Add a regression test with a `{n,m}` argv. The
+matching flaw in the pygments config (embedding raw braces) should also be hardened once the
+renderer is fixed. Neither is detector tuning; surfaced by D-018 but independent of it.
 
 ### T-004 — Resolve the two stale worktrees
 **Status:** active

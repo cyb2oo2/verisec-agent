@@ -23,6 +23,59 @@ from the code.
 
 ---
 
+## D-018 — Holdout 2 result: 0/8 detected, 0/2 primary recall, zero false positives
+**Date:** 2026-07-22 · **Status:** accepted
+
+**Context:** Holdout 2 (D-017) was run once on 2026-07-22 against detector commit `0ca2df5`.
+Outcome: 0 findings across all 8 blind cases. Primary recall 0/2. Zero false positives on the
+six non-primary cases. This is the first blind measurement of VeriSec on cases whose detector
+behaviour had never been observed.
+
+**What it means:** Both primary-eligible cases — textbook ReDoS pattern-delta fixes that were
+selected *because* they match the rule's stated assumption — produced zero hypotheses. The
+cause is structural and confirms D-015 on unseen data: `py-regex-redos-hardening` requires the
+surface form `re.<func>(<inline pattern>` with `func` in `search|match|compile|fullmatch|findall|sub`.
+transformers assigns the pattern to a variable and calls `re.split`; pygments puts the regex in
+a lexer token tuple with no `re.` call. Neither surface matches, so neither fires. The rule does
+not generalize even within its own target class. Groups B and C produced no false positives on
+six real patches, so the null result is not a broken-harness artifact — the detector ran and was
+simply silent.
+
+**Decision:** Publish the result as-is and change no detector. Tuning any rule so these cases
+would fire is exactly the measurement fraud Invariant 1 forbids; the misses are the finding.
+Two real defects surfaced by the run are recorded as separate follow-ups, neither of which is
+detector tuning:
+
+1. **Harness robustness bug.** `verification.py` renders command argv via
+   `arg.format(**substitutions)`. Any argv containing `{...}` that is not a known placeholder
+   crashes — here `KeyError: '1,36'` from a `{1,36}` regex quantifier embedded in the pygments
+   property-check config. This errored pygments' case completion but occurred *after* the
+   detector produced its 0-hypothesis result (recorded in the case trace), so it does not affect
+   the measurement. Tracked as T-010.
+2. **Detection gap.** The ReDoS hardening rule (and, per D-015, the `py-sql-*` family) keys on a
+   narrow syntactic shape that real hardening commits rarely use. Making it match variables,
+   `re.split`, `re.compile` with flags on a separate line, and non-`re` call sites is future
+   detector work — and it must be validated on *new* unseen cases, never on these now-burned
+   ones. Tracked as T-011.
+
+**Alternatives:** (a) Re-run pygments after fixing the harness bug to "recover" its result —
+rejected as unnecessary and methodologically muddy; the detection result (0 hypotheses) is
+already recorded in the trace, so nothing is lost, and re-running a burned case invites the
+appearance of a second look. (b) Treat 0/2 as too small to report — rejected; n=2 is small and
+labelled as a point observation (the claim boundary says so), but a blind 0/2 with a clear
+structural cause is a real signal, not noise. (c) Quietly widen the rule now — rejected;
+Invariant 1.
+
+**Consequences:** No published detection-quality claim survives this run unqualified. The
+promoted suite was already demoted to `illustrative` (D-016); Holdout 2 now supplies the
+blind number that was always missing, and it is 0/2. VeriSec's demonstrated strength on this
+evidence is precision (zero false positives on real benign-shaped and out-of-scope patches),
+not recall. T-011 (rule generalization) is the highest-value detector work the project has;
+until it lands and is measured on fresh blind cases, VeriSec should be described as a
+high-precision, low-recall signature matcher, which is what the evidence supports.
+
+---
+
 ## D-017 — Holdout 2 frozen at 8 cases in three groups
 **Date:** 2026-07-22 · **Status:** accepted
 

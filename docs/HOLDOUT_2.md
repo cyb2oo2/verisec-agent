@@ -1,9 +1,9 @@
 # VeriSec Holdout 2
 
-**Status: FROZEN — NOT YET RUN.** The case set, configs, and protocol below are
-locked as of the freeze date. No case here has been evaluated against VeriSec.
-The single measured run is a separate, deliberate action; until it happens the
-Results table stays empty.
+**Status: FROZEN AND RUN (2026-07-22).** The case set, configs, and protocol are
+locked as of the freeze date; the single measured run has been performed once and
+its result is in Results below. Detectors must not be tuned against these cases
+(Invariant 1); the holdout is not re-run.
 
 Second explicitly frozen holdout for VeriSec Agent. It supersedes nothing:
 [HOLDOUT_PILOT.md](HOLDOUT_PILOT.md) records the first pilot at its own freeze
@@ -175,14 +175,49 @@ afterward (Invariant 1).
 
 ## Results
 
-*Not run.*
+Run once on 2026-07-22 against detector commit `0ca2df5`
+(`verisec-runs/holdout2-run`). Published as measured; not re-run.
 
 | Metric | A: primary-eligible (n=2) | B: removal-shape (n=3) | C: open-class (n=3) |
 | --- | ---: | ---: | ---: |
-| Cases | | | |
-| Findings | | | |
-| Primary finding recall | | n/a | n/a |
-| Primary precision | | | |
-| Unexpected finding rate | | | |
-| Verification commands passed | | | |
-| Strict gate | | | |
+| Cases | 2 | 3 | 3 |
+| Findings | 0 | 0 | 0 |
+| Primary finding recall | 0.00 | n/a | n/a |
+| Primary precision | n/a (no findings) | n/a | n/a |
+| Unexpected finding rate | 0.00 | 0.00 | 0.00 |
+| Verification commands passed | 1/2 | 3/3 | 3/3 |
+| Strict gate | failed (recall 0) | pass | pass |
+
+**Headline: 0 findings across all 8 cases. Primary recall 0/2. Zero false
+positives.**
+
+Both primary-eligible cases missed, and for the same structural reason D-015
+identified — `py-regex-redos-hardening` keys on `re.<func>(<inline pattern>` and
+real fixes do not take that surface form:
+
+- **transformers** (0 findings): the hardened pattern is assigned to a variable
+  and used via `re.split(codeblock_pattern, ...)`. The rule's function list is
+  `search|match|compile|fullmatch|findall|sub` — `split` is absent — and it
+  requires the pattern inline, not through a variable.
+- **pygments** (0 hypotheses generated): the rewritten regex is a bare string
+  literal in a lexer token tuple, `(r'[0-9a-fA-F]{1,36}...', Literal)`, with no
+  `re.` call anywhere. Nothing for the rule to anchor on.
+
+This is the blind confirmation of D-015 on unseen data: the ReDoS hardening rule
+does not generalize even within its own target class, because it matches a narrow
+syntax that genuine hardening commits rarely use.
+
+The result is not an artifact of a weak sample in the other direction either:
+groups B and C produced **zero false positives** on six real security patches,
+including removal-shape ReDoS/SQL fixes and out-of-scope classes. VeriSec stayed
+silent where it should, and also silent where it should have fired.
+
+**One case errored, and it does not change the detection result.** pygments'
+property-check command crashed with `KeyError: '1,36'` because
+`verification.py` renders argv via `str.format(**substitutions)` and the config
+embeds the literal regex quantifier `{1,36}`, which `str.format` reads as a
+replacement field. The crash occurs in the verification step, *after* the
+detector generated its 0 hypotheses (recorded in the case trace), so the miss
+above is a real detection result, not a crash artifact. The harness bug and the
+config that triggered it are tracked separately (see DEVELOPMENT_LOG.md D-018);
+they are not fixed by re-tuning any detector, and the holdout is not re-run.
