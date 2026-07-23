@@ -67,17 +67,18 @@ repositories. Snapshot from
 | System | Positive Cases | Negative Controls | Primary Recall | Primary Precision | Findings | Raw Tool Findings | Out Scope | Validation | Tool Evidence | Neg Ctrl Violations |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
 | VeriSec Agent | 3 OSS CVE/PR cases | 15 adversarial controls | 1.00 | 0.50 | 8 | 8 | 0 | 1.00 | 1.00 | 0 |
-| VeriSec Agent promoted CVEs | 6 promoted CVE cases | 15 adversarial controls | 1.00 | 0.64 | 11 | 11 | 0 | 1.00 | 1.00 | 0 |
+| VeriSec Agent promoted CVEs | 6 promoted CVE cases | 15 adversarial controls | n/a | 0.00 | 0 | 0 | 0 | 1.00 | 0.00 | 0 |
 | Semgrep baseline | 3 OSS CVE/PR cases | 10 isolated scanner controls | 0.00 | 0.00 | 0 | 2 | 2 | 1.00 | 0.00 | 0 |
 | CodeQL baseline | 3 OSS CVE/PR cases | 10 isolated scanner controls | 0.00 | 0.00 | 0 | 10 | 10 | 1.00 | 0.00 | 0 |
 
 Scanner rows use patch-overlap scoring for the recorded configurations; zero
 recall means those configs did not match labeled changed lines in this set. The
-promoted-CVE row's recall comes from regex rules whose patterns match
-identifiers introduced by the specific patches scored, so it measures signature
-coverage of these curated cases rather than detection that generalizes to unseen
-patches, and is not a like-for-like comparison with the scanner rows (see
-[DEVELOPMENT_LOG.md](DEVELOPMENT_LOG.md) D-015).
+promoted-CVE row is verification-only: the patch-literal signatures that once
+scored it were retired, so VeriSec reports no generalizable detection on these
+cases (recall `n/a`, 0 findings). They are retained because each fix is
+independently confirmed present by a property-check (validation `1.00`); the row
+makes no detection claim and is not comparable to the scanner rows (see
+[DEVELOPMENT_LOG.md](DEVELOPMENT_LOG.md) D-022).
 
 **Holdout protocol** (blind pilot vs later post-fix remeasure):
 
