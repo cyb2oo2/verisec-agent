@@ -23,6 +23,36 @@ from the code.
 
 ---
 
+## D-023 — Clear the inert retired-rule references left by D-022
+**Date:** 2026-07-24 · **Status:** accepted
+**Context:** D-022 retired five patch-literal rules but deliberately left three fixture references
+to them as inert follow-up: `candidate_cases.json` (the promotion-staging / audit pool), the
+orphaned `candidate_promotion_eval_*.json`, and the promoted `.toml` `VERISEC_EVIDENCE` markers.
+None gated anything — case-audit checks a rule id is *present*, not that it *exists*, and
+`build_validation_plan` reads only findings, so on a zero-finding verification-only case the
+evidence markers are never consulted — but they were stale references to rules that no longer exist.
+**Decision:** Reconcile the staging fixtures with the reframed promoted suite. In
+`candidate_cases.json`, reframed the six promoted cases (the four `py-sql-*`, the DoS case, and the
+sqlparse case) to verification-only — empty `expected_findings`, `verification-only` tag — matching
+`promoted_candidate_cases.json`. Deleted the four orphaned `candidate_promotion_eval_*.json` (dead
+one-time promotion-eval inputs from the initial build, referenced by nothing). Set the retired
+rule ids in the five promoted-`.toml` evidence markers to `""`; the markers' `check`/`assertion`
+fields still document what each property-check confirms, and the change is behaviour-neutral (the
+markers are unconsulted for zero-finding cases). **Invariant 1:** the frozen holdout pair
+(`django-cve-2023-46695`, `mechanize-0-4-6`) and the unpromoted `django-cve-2023-36053` candidate
+were left untouched — all three cite live rules (`py-unicode-normalization-dos`,
+`py-regex-redos-hardening`), not retired ones.
+**Alternatives:** (a) Update the orphaned promotion-eval fixtures instead of deleting — rejected;
+they are dead duplicates of the promoted cases and maintaining them serves nothing. (b) Leave the
+`.toml` markers (strictly outside "candidate fixtures") — rejected; they were the same class of
+stale reference and D-022 named them, so clearing them closes the item completely.
+**Consequences:** No retired-rule id remains in `examples/` (the DEVELOPMENT_LOG keeps them as
+history). Verified behaviour-neutral: case-audit 9/9 ready (0 blocked, 6 expected
+missing-expected-findings warnings; `candidate-cves` is `fail_on_warnings: false`), promoted eval
+still 6/6 cases, 0 findings, validation coverage 1.0, 6/6 fixes confirmed, and 206 tests pass. No
+published measurement moves — the candidate pool and promoted `.toml`s feed audit/verification, not
+the benchmark matrix.
+
 ## D-022 — Retire the promoted-suite patch-literal apparatus; reframe promoted-cves to verification-only
 **Date:** 2026-07-23 · **Status:** accepted
 **Context:** D-021 deferred the retire/keep decision for the four `py-sql-*` patch-literal rules and

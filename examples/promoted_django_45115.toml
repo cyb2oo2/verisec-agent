@@ -35,7 +35,7 @@ print(
     + json.dumps(
         dict(
             kind="property-check",
-            rule_id="py-dos-algorithmic-complexity",
+            rule_id="",
             file_path="django/contrib/auth/password_validation.py",
             check="algorithmic complexity regression test",
             assertion="Password similarity validation skips expensive SequenceMatcher calls for extreme length ratios.",

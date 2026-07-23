@@ -48,7 +48,7 @@ for file_path, assertion in (
         + json.dumps(
             dict(
                 kind="property-check",
-                rule_id="py-sql-delimiter-injection",
+                rule_id="",
                 file_path=file_path,
                 check="SQL injection regression test",
                 assertion=assertion,

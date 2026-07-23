@@ -71,8 +71,11 @@ validated; not Django-specific.
   `verisec portfolio` run (5 suites, 0 failures) republished the matrix / RELEASE_BENCHMARK.md /
   README verbatim — only the promoted-CVE row changed (→ verification-only: 6 cases, 0 findings,
   recall n/a, validation 1.00); other rows byte-identical; freshness check passes. **This sub-item is
-  done.** **Minor follow-ups:** the candidate staging fixtures and promoted `.toml` evidence markers
-  still name retired rule ids (inert; reconcile with the promotion pipeline, T-002).
+  done.** **Fixture cleanup done (D-023):** no retired-rule id remains in `examples/` — the six
+  promoted candidate cases in `candidate_cases.json` reframed to verification-only, the four orphaned
+  `candidate_promotion_eval_*.json` deleted, and the five promoted-`.toml` evidence rule ids cleared.
+  Frozen holdout pair and the unpromoted `django-cve-2023-36053` candidate left untouched (they cite
+  live rules). Behaviour-neutral: case-audit 9/9 ready, promoted eval unchanged, 206 tests pass.
 
 Hard constraints unchanged: **validate on new, unseen cases only** (Holdout 2 and pilot are
 burned — Invariant 1); **paired negative controls first** (Invariant 4). The honest test of

@@ -16,23 +16,8 @@
         "advisory_url": "https://www.djangoproject.com/weblog/2020/feb/03/security-releases/",
         "vulnerability_class": "sql-injection"
       },
-      "expected_findings": [
-        {
-          "rule_id": "py-sql-delimiter-injection",
-          "file_path": "django/contrib/postgres/aggregates/general.py",
-          "severity": "high",
-          "role": "primary",
-          "notes": "StringAgg delimiter moved from SQL template interpolation into a Value expression."
-        },
-        {
-          "rule_id": "py-sql-delimiter-injection",
-          "file_path": "tests/postgres_tests/test_aggregates.py",
-          "severity": "high",
-          "role": "supporting",
-          "notes": "Regression coverage for crafted delimiter injection."
-        }
-      ],
-      "tags": ["candidate", "oss", "cve", "python", "django", "sql-injection"]
+      "expected_findings": [],
+      "tags": ["candidate", "oss", "cve", "python", "django", "sql-injection", "verification-only"]
     },
     {
       "id": "django-cve-2022-28346-queryset-alias-sqli",
@@ -50,23 +35,8 @@
         "advisory_url": "https://www.djangoproject.com/weblog/2022/apr/11/security-releases/",
         "vulnerability_class": "sql-injection"
       },
-      "expected_findings": [
-        {
-          "rule_id": "py-sql-identifier-injection",
-          "file_path": "django/db/models/sql/query.py",
-          "severity": "high",
-          "role": "primary",
-          "notes": "Column alias validation blocks SQL fragments in annotate(), aggregate(), and extra()."
-        },
-        {
-          "rule_id": "py-sql-explain-option-injection",
-          "file_path": "django/db/models/sql/query.py",
-          "severity": "high",
-          "role": "supporting",
-          "notes": "The same Django security release also validates EXPLAIN option names before SQL generation."
-        }
-      ],
-      "tags": ["candidate", "oss", "cve", "python", "django", "sql-injection"]
+      "expected_findings": [],
+      "tags": ["candidate", "oss", "cve", "python", "django", "sql-injection", "verification-only"]
     },
     {
       "id": "django-cve-2022-28347-queryset-explain-sqli",
@@ -84,23 +54,8 @@
         "advisory_url": "https://www.djangoproject.com/weblog/2022/apr/11/security-releases/",
         "vulnerability_class": "sql-injection"
       },
-      "expected_findings": [
-        {
-          "rule_id": "py-sql-explain-option-injection",
-          "file_path": "django/db/models/sql/query.py",
-          "severity": "high",
-          "role": "primary",
-          "notes": "EXPLAIN option names are allowlisted before being assembled into SQL."
-        },
-        {
-          "rule_id": "py-sql-identifier-injection",
-          "file_path": "django/db/models/sql/query.py",
-          "severity": "high",
-          "role": "supporting",
-          "notes": "The same Django security release also validates query aliases before SQL compilation."
-        }
-      ],
-      "tags": ["candidate", "oss", "cve", "python", "django", "sql-injection"]
+      "expected_findings": [],
+      "tags": ["candidate", "oss", "cve", "python", "django", "sql-injection", "verification-only"]
     },
     {
       "id": "django-cve-2022-34265-trunc-extract-sqli",
@@ -118,23 +73,8 @@
         "advisory_url": "https://www.djangoproject.com/weblog/2022/jul/04/security-releases/",
         "vulnerability_class": "sql-injection"
       },
-      "expected_findings": [
-        {
-          "rule_id": "py-sql-lookup-injection",
-          "file_path": "django/db/models/functions/datetime.py",
-          "severity": "high",
-          "role": "primary",
-          "notes": "Trunc(kind) and Extract(lookup_name) validate SQL fragments against a strict pattern."
-        },
-        {
-          "rule_id": "py-sql-lookup-injection",
-          "file_path": "tests/db_functions/datetime/test_extract_trunc.py",
-          "severity": "high",
-          "role": "supporting",
-          "notes": "Regression tests assert crafted lookup/kind values are rejected."
-        }
-      ],
-      "tags": ["candidate", "oss", "cve", "python", "django", "sql-injection"]
+      "expected_findings": [],
+      "tags": ["candidate", "oss", "cve", "python", "django", "sql-injection", "verification-only"]
     },
     {
       "id": "django-cve-2023-36053-email-url-validator-redos",
@@ -179,16 +119,8 @@
         "advisory_url": "https://www.djangoproject.com/weblog/2022/jan/04/security-releases/",
         "vulnerability_class": "algorithmic-complexity-dos"
       },
-      "expected_findings": [
-        {
-          "rule_id": "py-dos-algorithmic-complexity",
-          "file_path": "django/contrib/auth/password_validation.py",
-          "severity": "medium",
-          "role": "primary",
-          "notes": "The validator avoids expensive similarity checks for extreme length ratios."
-        }
-      ],
-      "tags": ["candidate", "oss", "cve", "python", "django", "dos"]
+      "expected_findings": [],
+      "tags": ["candidate", "oss", "cve", "python", "django", "dos", "verification-only"]
     },
     {
       "id": "django-cve-2023-46695-usernamefield-normalization-dos",
@@ -234,23 +166,8 @@
         "advisory_url": "https://github.com/advisories/GHSA-rrm6-wvj7-cwh2",
         "vulnerability_class": "redos"
       },
-      "expected_findings": [
-        {
-          "rule_id": "py-regex-redos-hardening",
-          "file_path": "sqlparse/keywords.py",
-          "severity": "medium",
-          "role": "primary",
-          "notes": "The lexer regex table was restructured to remove a vulnerable regular expression."
-        },
-        {
-          "rule_id": "py-regex-redos-hardening",
-          "file_path": "sqlparse/lexer.py",
-          "severity": "medium",
-          "role": "supporting",
-          "notes": "Lexer initialization now compiles configured regexes explicitly."
-        }
-      ],
-      "tags": ["candidate", "oss", "github-advisory", "python", "sqlparse", "redos", "regex"]
+      "expected_findings": [],
+      "tags": ["candidate", "oss", "github-advisory", "python", "sqlparse", "redos", "regex", "verification-only"]
     },
     {
       "id": "mechanize-0-4-6-www-authenticate-redos",
