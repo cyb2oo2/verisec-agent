@@ -67,12 +67,12 @@ validated; not Django-specific.
   from builtin, the two sqlparse alternations stripped from `py-regex-redos-hardening` (generic core
   kept), and the `django` pack deleted. `promoted-cves` reframed to verification-only (cases keep
   their property-checks, drop detection `expected_findings`; gate now asserts fixes-confirmed, not
-  recall). Generic `py-sql-string-format` (D-019) is the SQLi path. **Remaining mechanical step:**
-  regenerate `docs/release_benchmark_matrix.json`, `docs/RELEASE_BENCHMARK.md`, and the README table
-  from a networked `verisec portfolio` run (Invariant 2 — not hand-editable); until then they show
-  the stale illustrative 1.0 row and CI's freshness check will flag it. **Minor follow-ups:** the
-  candidate staging fixtures and promoted `.toml` evidence markers still name retired rule ids
-  (inert; reconcile with the promotion pipeline, T-002).
+  recall). Generic `py-sql-string-format` (D-019) is the SQLi path. **Benchmark regenerated:** a live
+  `verisec portfolio` run (5 suites, 0 failures) republished the matrix / RELEASE_BENCHMARK.md /
+  README verbatim — only the promoted-CVE row changed (→ verification-only: 6 cases, 0 findings,
+  recall n/a, validation 1.00); other rows byte-identical; freshness check passes. **This sub-item is
+  done.** **Minor follow-ups:** the candidate staging fixtures and promoted `.toml` evidence markers
+  still name retired rule ids (inert; reconcile with the promotion pipeline, T-002).
 
 Hard constraints unchanged: **validate on new, unseen cases only** (Holdout 2 and pilot are
 burned — Invariant 1); **paired negative controls first** (Invariant 4). The honest test of

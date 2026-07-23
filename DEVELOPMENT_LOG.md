@@ -59,10 +59,13 @@ The published promoted-CVE row stops reading as a detection result. **Invariant 
 removed two independent alternation branches that match only sqlparse-specific literals present in no
 holdout fixture (verified), and the generic ReDoS-hardening core still fires
 (`test_generate_hypotheses_flags_regex_redos_hardening`), so frozen-holdout detection is unchanged by
-construction. **Invariant 2 — remaining mechanical step:** `docs/release_benchmark_matrix.json`,
-`docs/RELEASE_BENCHMARK.md`, and the README table must be regenerated from a networked
-`verisec portfolio` run; they are not hand-editable. Until regenerated they show the stale illustrative
-1.0 row; CI's freshness check enforces the regen on push. Left as follow-up: the candidate staging
+construction. **Invariant 2 — done:** `docs/release_benchmark_matrix.json`, `docs/RELEASE_BENCHMARK.md`,
+and the README table were regenerated verbatim from a live `verisec portfolio` run (5 suites, 0
+failures); only the promoted-CVE row changed (illustrative 1.0 → verification-only: 6 cases, 0
+findings, recall n/a, validation 1.00), while the oss-seed, Semgrep, and CodeQL rows reproduced
+byte-identically, and the freshness check passes. The reframed gate passed on the live run
+(validation coverage 1.0, required failures 0, all 6 fixes confirmed present). Left as follow-up: the
+candidate staging
 fixtures (`candidate_cases.json`, orphaned `candidate_promotion_eval_*.json`) still cite the retired
 rule ids in `expected_findings` — inert (audit-only; nothing gates on rule existence) but worth
 reconciling with the promotion pipeline (T-002); and the promoted `.toml` `VERISEC_EVIDENCE` markers
