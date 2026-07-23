@@ -23,6 +23,51 @@ from the code.
 
 ---
 
+## D-022 — Retire the promoted-suite patch-literal apparatus; reframe promoted-cves to verification-only
+**Date:** 2026-07-23 · **Status:** accepted
+**Context:** D-021 deferred the retire/keep decision for the four `py-sql-*` patch-literal rules and
+stated retiring them would make the promoted-CVE benchmark row "honest 0.0." That framing was
+imprecise. Inspecting the six promoted cases showed the row's 6/6 primary recall rests on the whole
+patch-literal apparatus, not four rules: the four `py-sql-*` rules (4 cases), a fifth patch-literal
+`py-dos-algorithmic-complexity` (django-2021-45115), and two sqlparse-specific alternations
+(`PROCESS_AS_KEYWORD…`) appended to the otherwise-generic `py-regex-redos-hardening` (sqlparse-2023-30608).
+Retiring only the four would leave an incoherent ~0.33 with two same-species signatures standing.
+These rules are `adds-hardening` — they detect a specific fix being applied, which has no honest
+generic form; the generic SQLi detector `py-sql-string-format` (D-019) detects the *vulnerability*
+and is the real detection story. Every one of the six cases carries a `VERISEC_EVIDENCE` property-check
+that confirms the fix independently of any detection rule.
+**Decision (owner-approved):** Retire the full apparatus. Removed the five patch-literal rules from
+`hypotheses.py` `RULES`; stripped the two sqlparse alternations from `py-regex-redos-hardening`,
+keeping its generic core. Removed the now-empty `django` rule pack entirely (`rules_django.py`, the
+`rules_api` factory, the pyproject entry point) rather than ship a vestige; plugin-spine tests now use
+an in-test `FakeRuleProvider`. Reframed the `promoted-cves` suite to **verification-only**:
+`promoted_candidate_cases.json` cases keep their repos, configs, and property-checks but drop their
+detection `expected_findings`, so the suite produces zero findings and `primary_finding_recall` is
+`None` (not 0.0 — with no primary expectation there is nothing to miss; a hardening patch is not a
+generalizable detection target, so `None` is the precise statement, and the earlier "0.0" shorthand
+would have implied a failed detection attempt). The suite gate drops every finding/recall threshold
+and keeps `min_validation_coverage: 1.0` plus `max_required_failures: 0` — so it now asserts the
+fixes are confirmed present, not that signatures matched. The benchmark-matrix row keeps
+`display_status` (now `verification-only`) and a rewritten claim boundary.
+**Alternatives:** (a) Retire only the four (D-021's literal scope) — rejected as an incoherent
+half-measure. (b) Quarantine to an opt-in pack — rejected by the owner; the sqlparse alternations
+can't be partially quarantined anyway, and it preserves a row that still reads as detection. (c) Keep
+`expected_findings` pointing at the retired rules to force a literal 0.0 — rejected; it fabricates a
+detection expectation for a hardening patch and leaves dangling rule ids in fixtures.
+**Consequences:** VeriSec ships no patch-literal detection; default reviews never emit these findings.
+The published promoted-CVE row stops reading as a detection result. **Invariant 1:** the sqlparse strip
+removed two independent alternation branches that match only sqlparse-specific literals present in no
+holdout fixture (verified), and the generic ReDoS-hardening core still fires
+(`test_generate_hypotheses_flags_regex_redos_hardening`), so frozen-holdout detection is unchanged by
+construction. **Invariant 2 — remaining mechanical step:** `docs/release_benchmark_matrix.json`,
+`docs/RELEASE_BENCHMARK.md`, and the README table must be regenerated from a networked
+`verisec portfolio` run; they are not hand-editable. Until regenerated they show the stale illustrative
+1.0 row; CI's freshness check enforces the regen on push. Left as follow-up: the candidate staging
+fixtures (`candidate_cases.json`, orphaned `candidate_promotion_eval_*.json`) still cite the retired
+rule ids in `expected_findings` — inert (audit-only; nothing gates on rule existence) but worth
+reconciling with the promotion pipeline (T-002); and the promoted `.toml` `VERISEC_EVIDENCE` markers
+still name retired rule ids, harmless because coverage on a zero-finding case is vacuous.
+
 ## D-021 — De-duplicate the py-sql-* patch-literal rules; defer the retire/keep decision
 **Date:** 2026-07-23 · **Status:** accepted
 **Context:** Auditing the four `py-sql-*` rules (`py-sql-lookup-injection`,

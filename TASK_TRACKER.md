@@ -62,17 +62,17 @@ validated; not Django-specific.
   left unflagged; a redos-shaped string is not necessarily a compiled regex (FP hazard). Pinned by
   `negative-redos-literal-in-structure`. Safe closure needs a regex-context signal (dataflow to a
   sink, or framework marker). The variable-bound and class-attribute forms already fire.
-- **`py-sql-*` identifier rules** (D-015, D-021): the four patch-literal rules still exist and
-  still cannot fire on unseen SQL; the generic concat/taint detector (`py-sql-string-format`,
-  D-019) is the path for real SQLi. Two corrections landed in D-021: they live in the *always-on
-  builtin* set (not the opt-in Django pack, as this note once implied), and they were duplicated
-  verbatim in `rules_django.py`. **Done:** de-duplicated — the django pack now re-exports the
-  builtin objects, so no drift is possible; behavior and the benchmark are unchanged.
-  **Still open (deferred owner decision):** whether to **retire** the rules (promoted row → honest
-  0.0, cases kept as verification-only) or **quarantine** them to the opt-in pack. "Generalize" is
-  not a real option — there is no honest generic form of "detect this specific hardening patch."
-  D-021 records the full option analysis; both directions change published measurements, so neither
-  was taken without sign-off.
+- **`py-sql-*` patch-literal rules** (D-015 → D-021 → D-022): **retired.** Owner approved retiring
+  the full apparatus (D-022): the four `py-sql-*` rules plus `py-dos-algorithmic-complexity` removed
+  from builtin, the two sqlparse alternations stripped from `py-regex-redos-hardening` (generic core
+  kept), and the `django` pack deleted. `promoted-cves` reframed to verification-only (cases keep
+  their property-checks, drop detection `expected_findings`; gate now asserts fixes-confirmed, not
+  recall). Generic `py-sql-string-format` (D-019) is the SQLi path. **Remaining mechanical step:**
+  regenerate `docs/release_benchmark_matrix.json`, `docs/RELEASE_BENCHMARK.md`, and the README table
+  from a networked `verisec portfolio` run (Invariant 2 — not hand-editable); until then they show
+  the stale illustrative 1.0 row and CI's freshness check will flag it. **Minor follow-ups:** the
+  candidate staging fixtures and promoted `.toml` evidence markers still name retired rule ids
+  (inert; reconcile with the promotion pipeline, T-002).
 
 Hard constraints unchanged: **validate on new, unseen cases only** (Holdout 2 and pilot are
 burned — Invariant 1); **paired negative controls first** (Invariant 4). The honest test of

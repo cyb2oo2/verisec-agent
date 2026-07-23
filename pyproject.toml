@@ -26,7 +26,6 @@ verisec = "verisec_agent.cli:main"
 
 [project.entry-points."verisec.rules"]
 builtin = "verisec_agent.rules_builtin:BuiltinRuleProvider"
-django = "verisec_agent.rules_django:DjangoRuleProvider"
 
 [tool.setuptools.packages.find]
 where = ["src"]

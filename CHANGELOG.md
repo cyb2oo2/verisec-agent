@@ -73,6 +73,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Removed
 
+- Retired the five patch-literal detection rules that only matched specific Django/sqlparse
+  security patches: `py-sql-lookup-injection`, `py-sql-identifier-injection`,
+  `py-sql-explain-option-injection`, `py-sql-delimiter-injection`, and
+  `py-dos-algorithmic-complexity`. They could not fire on unseen code; generic SQL-injection
+  detection (`py-sql-string-format`) is the supported path. The two sqlparse-specific alternations
+  were also stripped from `py-regex-redos-hardening`, leaving its generic ReDoS shape-matching intact
+- Removed the optional `django` rule pack; its only contents were the retired patch-literal rules
+- The `promoted-cves` benchmark suite is now verification-only: its cases confirm each CVE fix is
+  present via property-checks but make no detection claim (see DEVELOPMENT_LOG.md D-022)
+
 - `django-cve-2023-36053` demoted from the promoted CVE suite. Its expected finding
   is a regex pattern-delta rule, but the CVE's fix adds length guards and changes no
   regex, so it was never detected at any commit. It stays in the audit-only candidate

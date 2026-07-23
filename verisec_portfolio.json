@@ -24,7 +24,7 @@
     "claim_boundaries": [
       "These metrics describe a curated benchmark of {VeriSec Agent:positive_cases} OSS seed cases, {VeriSec Agent promoted CVEs:positive_cases} promoted CVE cases, and {VeriSec Agent:negative_controls} negative controls; they are not estimates of recall or precision on arbitrary real-world repositories.",
       "Semgrep and CodeQL rows measure patch-overlap against this benchmark's labels for the recorded configurations. A zero recall here means those configurations did not match the labeled changed lines, not that VeriSec universally outperforms either scanner.",
-      "The promoted-CVE row's primary recall is produced by regex rules whose patterns match identifiers, constants, or test names introduced by the specific patches being scored; the semantic AST/dataflow layer contributes no promoted finding. It measures signature coverage of these curated cases, not detection that generalizes to unseen patches, and should not be read as a like-for-like detection-quality comparison against the scanner rows. See DEVELOPMENT_LOG.md D-015.",
+      "The promoted-CVE row is verification-only: the patch-literal signatures that previously scored it were retired (DEVELOPMENT_LOG.md D-022, extending D-015/D-016), so VeriSec reports no generalizable detection on these cases. They are retained because each fix is independently confirmed present by a property-check (validation coverage 1.0). The row makes no detection-quality claim and is not comparable to the scanner rows.",
       "The fast release profile may score captured or reused scanner artifacts for reproducibility. The nightly profile reruns the scanners live to measure tool and query-pack drift."
     ],
     "systems": [
@@ -38,8 +38,8 @@
         "label": "VeriSec Agent promoted CVEs",
         "suite": "promoted-cves",
         "negative_suite": "negative-controls",
-        "notes": "Illustrative, not a detection measurement: recall reflects regex signatures matching the scored patches' literal text (DEVELOPMENT_LOG.md D-015), not detection that generalizes.",
-        "display_status": "illustrative"
+        "notes": "Verification-only: the patch-literal signatures were retired (DEVELOPMENT_LOG.md D-022); VeriSec reports no generalizable detection here. Each fix is confirmed present by a property-check. Not a detection measurement.",
+        "display_status": "verification-only"
       },
       {
         "label": "Semgrep baseline",
@@ -131,13 +131,9 @@
       "fail_fast": true,
       "gate": {
         "min_validation_coverage": 1.0,
-        "min_tool_evidence_rate": 1.0,
-        "min_avg_confidence": 0.6,
-        "min_accepted_finding_rate": 1.0,
-        "min_primary_precision": 0.5,
-        "min_primary_finding_recall": 1.0,
-        "min_supporting_evidence_rate": 0.25,
         "max_unexpected_finding_rate": 0.0,
+        "max_required_failures": 0,
+        "max_errors": 0,
         "max_negative_control_violations": 0,
         "max_policy_blocked": 0,
         "max_validation_gap_rate": 0.0

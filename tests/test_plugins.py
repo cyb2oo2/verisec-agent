@@ -1,4 +1,5 @@
 import json
+import re
 from pathlib import Path
 
 from verisec_agent.adapters_api import (
@@ -9,19 +10,54 @@ from verisec_agent.adapters_api import (
 )
 from verisec_agent.config import load_config
 from verisec_agent.diff_parser import evidence_windows, parse_unified_diff
-from verisec_agent.hypotheses import generate_hypotheses
+from verisec_agent.hypotheses import Rule, generate_hypotheses
+from verisec_agent.models import EvidenceWindow
+from verisec_agent.python_semantics import SemanticMatch
 from verisec_agent.rules_api import (
     available_rule_packs,
     load_rule_registry,
     reset_rule_pack_cache,
 )
-from verisec_agent.rules_django import DjangoRuleProvider
 from verisec_agent.tool_adapters import list_builtin_adapters, resolve_adapter
 from verisec_agent.tool_output import (
     parse_bandit_json,
     parse_pip_audit_json,
     parse_tool_output,
 )
+
+_FAKE_RULE = Rule(
+    rule_id="test-fake-rule",
+    title="Test-only fake rule",
+    severity="low",
+    pattern=re.compile(r"__verisec_test_marker__"),
+    risk="test",
+    fix_guidance="test",
+    recommended_validation=("test",),
+    confidence=0.5,
+    false_positive_notes="test",
+)
+
+
+class FakeRuleProvider:
+    """Minimal non-builtin pack used to exercise entry-point discovery."""
+
+    @property
+    def pack_id(self) -> str:
+        return "fake"
+
+    def rules(self) -> tuple[Rule, ...]:
+        return (_FAKE_RULE,)
+
+    def analyze_window(self, window: EvidenceWindow) -> tuple[SemanticMatch, ...]:
+        return ()
+
+    def analyze_file(
+        self,
+        *,
+        file_path: Path,
+        changed_lines: set[int],
+    ) -> tuple[SemanticMatch, ...]:
+        return ()
 
 
 def setup_function() -> None:
@@ -34,10 +70,9 @@ def teardown_function() -> None:
     reset_rule_pack_cache()
 
 
-def test_available_rule_packs_include_builtin_and_django() -> None:
+def test_available_rule_packs_include_builtin() -> None:
     packs = available_rule_packs()
     assert "builtin" in packs
-    assert "django" in packs
 
 
 def test_rules_entry_points_discover_custom_pack(monkeypatch) -> None:
@@ -45,7 +80,7 @@ def test_rules_entry_points_discover_custom_pack(monkeypatch) -> None:
         name = "demo-pack"
 
         def load(self):
-            return DjangoRuleProvider
+            return FakeRuleProvider
 
     def fake_entry_points(*, group: str | None = None, **_kwargs):
         if group == "verisec.rules":
@@ -63,7 +98,7 @@ def test_rules_entry_points_discover_custom_pack(monkeypatch) -> None:
     # still report its own pack_id property.
     registry = load_rule_registry(["demo-pack"])
     rule_ids = {rule.rule_id for rule in registry.rules()}
-    assert "py-sql-lookup-injection" in rule_ids
+    assert "test-fake-rule" in rule_ids
     assert len(registry.providers) == 1
 
 
@@ -72,7 +107,7 @@ def test_rules_entry_point_accepts_factory_callable(monkeypatch) -> None:
         name = "factory-pack"
 
         def load(self):
-            return lambda: DjangoRuleProvider()
+            return lambda: FakeRuleProvider()
 
     monkeypatch.setattr(
         "verisec_agent.rules_api.entry_points",
@@ -82,7 +117,7 @@ def test_rules_entry_point_accepts_factory_callable(monkeypatch) -> None:
     )
     reset_rule_pack_cache()
     registry = load_rule_registry(["factory-pack"])
-    assert any(rule.rule_id == "py-sql-delimiter-injection" for rule in registry.rules())
+    assert any(rule.rule_id == "test-fake-rule" for rule in registry.rules())
 
 
 def test_installed_verisec_rules_entry_points_exist() -> None:
@@ -90,7 +125,6 @@ def test_installed_verisec_rules_entry_points_exist() -> None:
 
     names = {ep.name for ep in entry_points(group="verisec.rules")}
     assert "builtin" in names
-    assert "django" in names
 
 
 def test_builtin_rule_registry_loads_core_rules() -> None:
@@ -101,14 +135,7 @@ def test_builtin_rule_registry_loads_core_rules() -> None:
     assert "py-regex-redos" in rule_ids
 
 
-def test_django_pack_can_load_alone() -> None:
-    registry = load_rule_registry(["django"])
-    rule_ids = {rule.rule_id for rule in registry.rules()}
-    assert "py-sql-lookup-injection" in rule_ids
-    assert "py-shell-true" not in rule_ids
-
-
-def test_generate_hypotheses_respects_rule_packs() -> None:
+def test_generate_hypotheses_respects_rule_packs(monkeypatch) -> None:
     diff = """diff --git a/app.py b/app.py
 --- a/app.py
 +++ b/app.py
@@ -121,8 +148,23 @@ def test_generate_hypotheses_respects_rule_packs() -> None:
     with_shell = generate_hypotheses(windows, min_confidence=0.35, rule_packs=("builtin",))
     assert any(item.rule_id == "py-shell-true" for item in with_shell)
 
-    django_only = generate_hypotheses(windows, min_confidence=0.35, rule_packs=("django",))
-    assert django_only == ()
+    class FakeEntryPoint:
+        name = "fake-pack"
+
+        def load(self):
+            return FakeRuleProvider
+
+    monkeypatch.setattr(
+        "verisec_agent.rules_api.entry_points",
+        lambda **kwargs: (FakeEntryPoint(),)
+        if kwargs.get("group") == "verisec.rules"
+        else (),
+    )
+    reset_rule_pack_cache()
+
+    # A pack without the shell rule produces no finding on the same diff.
+    fake_only = generate_hypotheses(windows, min_confidence=0.35, rule_packs=("fake-pack",))
+    assert fake_only == ()
 
 
 def test_load_bandit_adapter_toml(tmp_path: Path) -> None:
@@ -164,7 +206,7 @@ def test_config_loads_rule_packs_and_adapter_paths(tmp_path: Path) -> None:
     config_path.write_text(
         f"""
 [rules]
-packs = ["builtin", "django"]
+packs = ["builtin"]
 
 [adapters]
 paths = ["{adapter.name}"]
@@ -176,7 +218,7 @@ required = false
         encoding="utf-8",
     )
     config = load_config(config_path)
-    assert config.rule_packs == ("builtin", "django")
+    assert config.rule_packs == ("builtin",)
     assert any(command.adapter == "bandit" for command in config.verification_commands)
     adapters = {item.to_dict()["id"] for item in list_builtin_adapters()}
     assert "bandit" in adapters
