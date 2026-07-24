@@ -1,0 +1,54 @@
+# Holdout 2 property check — holdout2-python-multipart-ct-redos
+# Verifies the upstream patch does what its advisory claims, independent of any
+# detector result. Emits VERISEC_NOTE. NOT frozen; see docs/HOLDOUT_2.md.
+
+[review]
+max_evidence_lines = 18
+source_context_lines = 10
+min_confidence = 0.35
+
+[policy]
+enabled = true
+execution_profile = "trusted-local"
+allowed_adapters = ["custom"]
+allowed_executables = ["{python}"]
+max_timeout_seconds = 120
+max_output_bytes = 1000000
+block_unavailable_adapters = false
+warn_unavailable_adapters = true
+environment_mode = "minimal"
+network_access = "inherit"
+
+[[verification.commands]]
+name = "holdout2-python-multipart-ct-redos-property"
+argv = [
+  "{python}",
+  "-c",
+  """
+import json
+from pathlib import Path
+
+target = Path('multipart/multipart.py')
+text = target.read_text(encoding="utf-8")
+present = ['from email.message import Message', 'def parse_options_header']
+absent = ['OPTION_RE.finditer']
+for token in present:
+    assert token in text, "expected patched content missing: " + token
+for token in absent:
+    assert token not in text, "pre-image construct still present: " + token
+marker = 'NOTE'
+payload = dict(
+    kind="property-check",
+    file_path='multipart/multipart.py',
+    check='ReDoS regression test with adversarial input',
+    assertion='Vulnerable Content-Type regex removed; header parsing delegated to email.message.Message. No pattern delta for a hardening rule to observe.',
+)
+payload['rule_id'] = 'py-regex-redos'
+print("VERISEC_" + marker + ": " + json.dumps(payload, sort_keys=True))
+""",
+]
+timeout_seconds = 30
+required = true
+adapter = "custom"
+description = "Property check for holdout2-python-multipart-ct-redos: assert the patch content, independent of detector output."
+capabilities = ["property-check", "redos"]

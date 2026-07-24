@@ -36,14 +36,14 @@ assert "explain_options = frozenset" in postgres
 for marker in (
     dict(
         kind="property-check",
-        rule_id="py-sql-identifier-injection",
+        rule_id="",
         file_path="django/db/models/sql/query.py",
         check="SQL injection regression test",
         assertion="Query aliases reject quotes, whitespace, semicolons, and SQL comments before SQL compilation.",
     ),
     dict(
         kind="property-check",
-        rule_id="py-sql-explain-option-injection",
+        rule_id="",
         file_path="django/db/models/sql/query.py",
         check="SQL injection regression test",
         assertion="QuerySet.explain() rejects unsafe option names before backend SQL generation.",

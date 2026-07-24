@@ -1,0 +1,7 @@
+diff --git a/examples/negative_controls.py b/examples/negative_controls.py
+--- a/examples/negative_controls.py
++++ b/examples/negative_controls.py
+@@ -83,1 +83,5 @@
++def lookup_parameterized_percent(cursor, user_id: int):
++    # %s here is a DB-API placeholder, not string formatting; params keep it safe.
++    return cursor.execute("SELECT id, name FROM users WHERE id = %s", (user_id,))

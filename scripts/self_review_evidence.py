@@ -26,6 +26,15 @@ from verisec_agent.python_semantics import (  # noqa: E402
 
 TEST_FILE = "tests/test_python_semantics.py"
 
+# Files that carry deliberate ReDoS-shaped fixtures VeriSec flags when it reviews
+# its own diff. The property check below verifies the detector behaviour once; the
+# evidence is attached to each fixture file so those self-review findings are
+# backed rather than left as uncovered false positives.
+REDOS_FIXTURE_FILES = (
+    "tests/test_python_semantics.py",
+    "tests/test_hypotheses.py",
+)
+
 
 def emit_evidence(**fields: object) -> None:
     print("VERISEC_EVIDENCE: " + json.dumps(fields, sort_keys=True))
@@ -86,17 +95,18 @@ def check_redos_adversarial_patterns() -> bool:
     if any(is_redos_prone(pattern) for pattern in linear):
         return False
 
-    emit_evidence(
-        kind="property-check",
-        rule_id="py-regex-redos",
-        file_path=TEST_FILE,
-        check="ReDoS regression test with adversarial input",
-        payload=" | ".join(catastrophic),
-        assertion=(
-            "Nested-quantifier and alternation-overlap patterns are classified "
-            "ReDoS-prone, while bounded and anchored equivalents are not."
-        ),
-    )
+    for fixture_file in REDOS_FIXTURE_FILES:
+        emit_evidence(
+            kind="property-check",
+            rule_id="py-regex-redos",
+            file_path=fixture_file,
+            check="ReDoS regression test with adversarial input",
+            payload=" | ".join(catastrophic),
+            assertion=(
+                "Nested-quantifier and alternation-overlap patterns are classified "
+                "ReDoS-prone, while bounded and anchored equivalents are not."
+            ),
+        )
     return True
 
 

@@ -1,3 +1,5 @@
+from pathlib import Path
+
 from verisec_agent.diff_parser import evidence_windows, parse_unified_diff
 from verisec_agent.hypotheses import generate_hypotheses
 
@@ -127,116 +129,6 @@ def test_generate_hypotheses_flags_unicode_normalization_hardening() -> None:
     assert not any(finding.rule_id == "py-regex-redos-hardening" for finding in findings)
 
 
-def test_generate_hypotheses_flags_password_similarity_dos_guard() -> None:
-    diff = """diff --git a/password_validation.py b/password_validation.py
---- a/password_validation.py
-+++ b/password_validation.py
-@@ -1,6 +1,13 @@
-+def exceeds_maximum_length_ratio(password, max_similarity, value):
-+    if max_similarity < 0.1:
-+        raise ValueError("max_similarity must be at least 0.1")
-+    return len(password) >= 10 * len(value)
-+
- class UserAttributeSimilarityValidator:
-     def validate(self, password, user=None):
-         for value_part in value_parts:
-+            if exceeds_maximum_length_ratio(password, self.max_similarity, value_part):
-+                continue
-             if SequenceMatcher(a=password, b=value_part).quick_ratio() >= self.max_similarity:
-                 raise ValidationError("too similar")
-"""
-
-    findings = generate_hypotheses(
-        evidence_windows(parse_unified_diff(diff)),
-        min_confidence=0.35,
-    )
-
-    assert [finding.rule_id for finding in findings] == [
-        "py-dos-algorithmic-complexity"
-    ]
-
-
-def test_generate_hypotheses_flags_sql_lookup_identifier_hardening() -> None:
-    diff = """diff --git a/datetime.py b/datetime.py
---- a/datetime.py
-+++ b/datetime.py
-@@ -1,3 +1,5 @@
-     def as_sql(self, compiler, connection):
-+        if not connection.ops.extract_trunc_lookup_pattern.fullmatch(self.lookup_name):
-+            raise ValueError("Invalid lookup_name: %s" % self.lookup_name)
-         sql, params = compiler.compile(self.lhs)
-"""
-
-    findings = generate_hypotheses(
-        evidence_windows(parse_unified_diff(diff)),
-        min_confidence=0.35,
-    )
-
-    assert [finding.rule_id for finding in findings] == ["py-sql-lookup-injection"]
-
-
-def test_generate_hypotheses_flags_django_alias_and_explain_sql_hardening() -> None:
-    diff = """diff --git a/django/db/models/sql/query.py b/django/db/models/sql/query.py
---- a/django/db/models/sql/query.py
-+++ b/django/db/models/sql/query.py
-@@ -1,3 +1,6 @@
-+FORBIDDEN_ALIAS_PATTERN = _lazy_re_compile(r"['`\\"]|--|/\\*|\\*/")
-+EXPLAIN_OPTIONS_PATTERN = _lazy_re_compile(r"[\\w\\-]+")
-+
- class Query:
-@@ -10,6 +13,9 @@
-     def explain(self, using, format=None, **options):
-+        for option_name in options:
-+            if not EXPLAIN_OPTIONS_PATTERN.fullmatch(option_name) or "--" in option_name:
-+                raise ValueError(f"Invalid option name: {option_name!r}.")
-         q = self.clone()
-"""
-
-    findings = generate_hypotheses(
-        evidence_windows(parse_unified_diff(diff)),
-        min_confidence=0.35,
-    )
-
-    assert [finding.rule_id for finding in findings] == [
-        "py-sql-identifier-injection",
-        "py-sql-explain-option-injection",
-    ]
-
-
-def test_generate_hypotheses_flags_stringagg_delimiter_parameterization() -> None:
-    diff = """diff --git a/aggregates/general.py b/aggregates/general.py
---- a/aggregates/general.py
-+++ b/aggregates/general.py
-@@ -1,7 +1,8 @@
-+from django.db.models import Value
- class StringAgg(OrderableAggMixin, Aggregate):
--    template = "%(function)s(%(distinct)s%(expressions)s, '%(delimiter)s'%(ordering)s)"
-+    template = '%(function)s(%(distinct)s%(expressions)s %(ordering)s)'
-     def __init__(self, expression, delimiter, **extra):
--        super().__init__(expression, delimiter=delimiter, **extra)
-+        delimiter_expr = Value(str(delimiter))
-+        super().__init__(expression, delimiter_expr, **extra)
-diff --git a/tests/test_aggregates.py b/tests/test_aggregates.py
---- a/tests/test_aggregates.py
-+++ b/tests/test_aggregates.py
-@@ -1,2 +1,5 @@
-+    def test_string_agg_delimiter_escaping(self):
-+        values = AggregateTestModel.objects.aggregate(
-+            stringagg=StringAgg('char_field', delimiter="'")
-+        )
-"""
-
-    findings = generate_hypotheses(
-        evidence_windows(parse_unified_diff(diff)),
-        min_confidence=0.35,
-    )
-
-    assert [finding.rule_id for finding in findings] == [
-        "py-sql-delimiter-injection",
-        "py-sql-delimiter-injection",
-    ]
-
-
 def test_generate_hypotheses_ignores_python_format_strings_in_gettext_catalogs() -> None:
     diff = """diff --git a/locale/az/LC_MESSAGES/django.po b/locale/az/LC_MESSAGES/django.po
 --- a/locale/az/LC_MESSAGES/django.po
@@ -254,7 +146,9 @@ def test_generate_hypotheses_ignores_python_format_strings_in_gettext_catalogs()
     assert findings == ()
 
 
-def test_generate_hypotheses_flags_sqlparse_lexer_redos_hardening() -> None:
+def test_generate_hypotheses_does_not_flag_sqlparse_keyword_literals() -> None:
+    # The sqlparse-specific alternations were retired from py-regex-redos-hardening
+    # (D-022); this patch carries no generic ReDoS shape, so nothing should fire.
     diff = """diff --git a/sqlparse/keywords.py b/sqlparse/keywords.py
 --- a/sqlparse/keywords.py
 +++ b/sqlparse/keywords.py
@@ -275,10 +169,7 @@ diff --git a/sqlparse/lexer.py b/sqlparse/lexer.py
         min_confidence=0.35,
     )
 
-    assert [finding.rule_id for finding in findings] == [
-        "py-regex-redos-hardening",
-        "py-regex-redos-hardening",
-    ]
+    assert findings == ()
 
 
 def test_generate_hypotheses_ignores_shell_true_in_comments_and_strings() -> None:
@@ -499,3 +390,56 @@ def test_real_shell_true_call_is_still_flagged() -> None:
     )
 
     assert any(finding.rule_id == "py-shell-true" for finding in findings)
+
+
+def test_triple_quoted_code_sample_redos_is_not_flagged(tmp_path: Path) -> None:
+    """Multi-line string masking must cover scan_mode="python-text" rules too.
+
+    The shell=True guard above only exercises "python-code". Routing text rules
+    around the mask restores the embedded-sample false positive for all ten of
+    them while recovering no detection, so this pins the text side separately.
+    """
+    source = 'import re\n\n\ndef fixture():\n    return """\nTOKEN = re.compile(r"(a+)+$")\n"""\n'
+    (tmp_path / "docs_sample.py").write_text(source, encoding="utf-8")
+    diff = '''diff --git a/docs_sample.py b/docs_sample.py
+--- a/docs_sample.py
++++ b/docs_sample.py
+@@ -1,4 +1,7 @@
+ import re
+
+
+ def fixture():
++    return """
++TOKEN = re.compile(r"(a+)+$")
++"""
+'''
+
+    findings = generate_hypotheses(
+        evidence_windows(parse_unified_diff(diff)),
+        min_confidence=0.35,
+        repo_path=tmp_path,
+    )
+
+    assert not any(finding.rule_id == "py-regex-redos" for finding in findings)
+
+
+def test_real_redos_call_is_still_flagged(tmp_path: Path) -> None:
+    """Guard against suppressing the sample by weakening the text rules."""
+    source = 'import re\n\nTOKEN = re.compile(r"(a+)+$")\n'
+    (tmp_path / "app.py").write_text(source, encoding="utf-8")
+    diff = '''diff --git a/app.py b/app.py
+--- a/app.py
++++ b/app.py
+@@ -1,2 +1,3 @@
+ import re
+
++TOKEN = re.compile(r"(a+)+$")
+'''
+
+    findings = generate_hypotheses(
+        evidence_windows(parse_unified_diff(diff)),
+        min_confidence=0.35,
+        repo_path=tmp_path,
+    )
+
+    assert any(finding.rule_id == "py-regex-redos" for finding in findings)

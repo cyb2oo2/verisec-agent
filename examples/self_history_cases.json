@@ -1,0 +1,328 @@
+{
+  "cases": [
+    {
+      "id": "self-history-fb8d569",
+      "repo_url": "..",
+      "base_ref": "9ad0852983a6a00ad846611bd21d509b7fe68997",
+      "head_ref": "fb8d569ecb2dec3da8f8119ead4c9bb731b47735",
+      "metadata": {
+        "project": "verisec/self-history",
+        "language": "python",
+        "commit_subject": "Add PR and URL diff ingestion",
+        "vulnerability_class": "none-benign-change"
+      },
+      "expected_findings": [],
+      "tags": [
+        "fp-corpus",
+        "self-history",
+        "python"
+      ]
+    },
+    {
+      "id": "self-history-5b48402",
+      "repo_url": "..",
+      "base_ref": "fb8d569ecb2dec3da8f8119ead4c9bb731b47735",
+      "head_ref": "5b484027e6387802a437c61dc7692a712bbe26ed",
+      "metadata": {
+        "project": "verisec/self-history",
+        "language": "python",
+        "commit_subject": "Build auditable VeriSec security review system",
+        "vulnerability_class": "none-benign-change"
+      },
+      "expected_findings": [],
+      "tags": [
+        "fp-corpus",
+        "self-history",
+        "python"
+      ]
+    },
+    {
+      "id": "self-history-d9754d0",
+      "repo_url": "..",
+      "base_ref": "5b484027e6387802a437c61dc7692a712bbe26ed",
+      "head_ref": "d9754d0a24c31a49e308241eb0ca8c694687f74b",
+      "metadata": {
+        "project": "verisec/self-history",
+        "language": "python",
+        "commit_subject": "Document verified benchmark and deployment boundaries",
+        "vulnerability_class": "none-benign-change"
+      },
+      "expected_findings": [],
+      "tags": [
+        "fp-corpus",
+        "self-history",
+        "python"
+      ]
+    },
+    {
+      "id": "self-history-cd7518e",
+      "repo_url": "..",
+      "base_ref": "d9754d0a24c31a49e308241eb0ca8c694687f74b",
+      "head_ref": "cd7518e0c0e4d6a845e545caaf9dea200caa2da6",
+      "metadata": {
+        "project": "verisec/self-history",
+        "language": "python",
+        "commit_subject": "Add frozen holdout evaluation and leakage audits",
+        "vulnerability_class": "none-benign-change"
+      },
+      "expected_findings": [],
+      "tags": [
+        "fp-corpus",
+        "self-history",
+        "python"
+      ]
+    },
+    {
+      "id": "self-history-c131dbf",
+      "repo_url": "..",
+      "base_ref": "cd7518e0c0e4d6a845e545caaf9dea200caa2da6",
+      "head_ref": "c131dbf6a365d69620c41f27b26706075ebdbd21",
+      "metadata": {
+        "project": "verisec/self-history",
+        "language": "python",
+        "commit_subject": "Add tool-neutral AI collaboration layer",
+        "vulnerability_class": "none-benign-change"
+      },
+      "expected_findings": [],
+      "tags": [
+        "fp-corpus",
+        "self-history",
+        "python"
+      ]
+    },
+    {
+      "id": "self-history-46eba2a",
+      "repo_url": "..",
+      "base_ref": "c131dbf6a365d69620c41f27b26706075ebdbd21",
+      "head_ref": "46eba2aa53f003e11e47bfe69dc8d6b123642bcd",
+      "metadata": {
+        "project": "verisec/self-history",
+        "language": "python",
+        "commit_subject": "Add full-file AST analysis and semantic detector families",
+        "vulnerability_class": "none-benign-change"
+      },
+      "expected_findings": [],
+      "tags": [
+        "fp-corpus",
+        "self-history",
+        "python"
+      ]
+    },
+    {
+      "id": "self-history-baf3890",
+      "repo_url": "..",
+      "base_ref": "46eba2aa53f003e11e47bfe69dc8d6b123642bcd",
+      "head_ref": "baf3890cb55031448f6237ce60a17600b0d6215e",
+      "metadata": {
+        "project": "verisec/self-history",
+        "language": "python",
+        "commit_subject": "Add rule pack and verification adapter plugin spine",
+        "vulnerability_class": "none-benign-change"
+      },
+      "expected_findings": [],
+      "tags": [
+        "fp-corpus",
+        "self-history",
+        "python"
+      ]
+    },
+    {
+      "id": "self-history-2923436",
+      "repo_url": "..",
+      "base_ref": "baf3890cb55031448f6237ce60a17600b0d6215e",
+      "head_ref": "292343651e615067a255474328487d5a50e33882",
+      "metadata": {
+        "project": "verisec/self-history",
+        "language": "python",
+        "commit_subject": "Add SARIF 2.1.0 export to the review bundle",
+        "vulnerability_class": "none-benign-change"
+      },
+      "expected_findings": [],
+      "tags": [
+        "fp-corpus",
+        "self-history",
+        "python"
+      ]
+    },
+    {
+      "id": "self-history-cffcfcd",
+      "repo_url": "..",
+      "base_ref": "292343651e615067a255474328487d5a50e33882",
+      "head_ref": "cffcfcd8530d21ce82bed828e7a92f41a129a150",
+      "metadata": {
+        "project": "verisec/self-history",
+        "language": "python",
+        "commit_subject": "Add operator surface for the primary review happy path",
+        "vulnerability_class": "none-benign-change"
+      },
+      "expected_findings": [],
+      "tags": [
+        "fp-corpus",
+        "self-history",
+        "python"
+      ]
+    },
+    {
+      "id": "self-history-2ca3966",
+      "repo_url": "..",
+      "base_ref": "cffcfcd8530d21ce82bed828e7a92f41a129a150",
+      "head_ref": "2ca3966ef8b1b438eca19038a8aa1c465ac41fc9",
+      "metadata": {
+        "project": "verisec/self-history",
+        "language": "python",
+        "commit_subject": "Document plugin spine, validation evidence, and holdout post-fix results",
+        "vulnerability_class": "none-benign-change"
+      },
+      "expected_findings": [],
+      "tags": [
+        "fp-corpus",
+        "self-history",
+        "python"
+      ]
+    },
+    {
+      "id": "self-history-f46861a",
+      "repo_url": "..",
+      "base_ref": "2ca3966ef8b1b438eca19038a8aa1c465ac41fc9",
+      "head_ref": "f46861a7324a0731cb1a59040d04df3b99534552",
+      "metadata": {
+        "project": "verisec/self-history",
+        "language": "python",
+        "commit_subject": "Record release-hardening split in the task tracker",
+        "vulnerability_class": "none-benign-change"
+      },
+      "expected_findings": [],
+      "tags": [
+        "fp-corpus",
+        "self-history",
+        "python"
+      ]
+    },
+    {
+      "id": "self-history-e7b2e70",
+      "repo_url": "..",
+      "base_ref": "f46861a7324a0731cb1a59040d04df3b99534552",
+      "head_ref": "e7b2e700e37056ca062f5e482d4a5adc664ae442",
+      "metadata": {
+        "project": "verisec/self-history",
+        "language": "python",
+        "commit_subject": "Record push state and main-branch divergence in the task tracker",
+        "vulnerability_class": "none-benign-change"
+      },
+      "expected_findings": [],
+      "tags": [
+        "fp-corpus",
+        "self-history",
+        "python"
+      ]
+    },
+    {
+      "id": "self-history-176c0a6",
+      "repo_url": "..",
+      "base_ref": "e7b2e700e37056ca062f5e482d4a5adc664ae442",
+      "head_ref": "176c0a68b994417756cff320214e5dba567eaa54",
+      "metadata": {
+        "project": "verisec/self-history",
+        "language": "python",
+        "commit_subject": "Fix Windows-only path separator in CodeQL SARIF test",
+        "vulnerability_class": "none-benign-change"
+      },
+      "expected_findings": [],
+      "tags": [
+        "fp-corpus",
+        "self-history",
+        "python"
+      ]
+    },
+    {
+      "id": "self-history-d4bb069",
+      "repo_url": "..",
+      "base_ref": "176c0a68b994417756cff320214e5dba567eaa54",
+      "head_ref": "d4bb06957fe3903ff94788ad6c13db9c18257b03",
+      "metadata": {
+        "project": "verisec/self-history",
+        "language": "python",
+        "commit_subject": "Stop reporting code samples in multi-line strings as call sites",
+        "vulnerability_class": "none-benign-change"
+      },
+      "expected_findings": [],
+      "tags": [
+        "fp-corpus",
+        "self-history",
+        "python"
+      ]
+    },
+    {
+      "id": "self-history-cb32438",
+      "repo_url": "..",
+      "base_ref": "d4bb06957fe3903ff94788ad6c13db9c18257b03",
+      "head_ref": "cb32438aebdab7dc56e54116fb9faee1f014095b",
+      "metadata": {
+        "project": "verisec/self-history",
+        "language": "python",
+        "commit_subject": "Back self-review validation checks with executed evidence",
+        "vulnerability_class": "none-benign-change"
+      },
+      "expected_findings": [],
+      "tags": [
+        "fp-corpus",
+        "self-history",
+        "python"
+      ]
+    },
+    {
+      "id": "self-history-d2c9c76",
+      "repo_url": "..",
+      "base_ref": "cb32438aebdab7dc56e54116fb9faee1f014095b",
+      "head_ref": "d2c9c76ad2b945540bd51cd5fcfc436d8faf1652",
+      "metadata": {
+        "project": "verisec/self-history",
+        "language": "python",
+        "commit_subject": "Grant the sticky comment job pull-requests write access",
+        "vulnerability_class": "none-benign-change"
+      },
+      "expected_findings": [],
+      "tags": [
+        "fp-corpus",
+        "self-history",
+        "python"
+      ]
+    },
+    {
+      "id": "self-history-076982e",
+      "repo_url": "..",
+      "base_ref": "d2c9c76ad2b945540bd51cd5fcfc436d8faf1652",
+      "head_ref": "076982e7ac65606edfc183c43bbf317c34d6919c",
+      "metadata": {
+        "project": "verisec/self-history",
+        "language": "python",
+        "commit_subject": "Demote django-cve-2023-36053 and regenerate the benchmark snapshot",
+        "vulnerability_class": "none-benign-change"
+      },
+      "expected_findings": [],
+      "tags": [
+        "fp-corpus",
+        "self-history",
+        "python"
+      ]
+    },
+    {
+      "id": "self-history-8c7dd82",
+      "repo_url": "..",
+      "base_ref": "076982e7ac65606edfc183c43bbf317c34d6919c",
+      "head_ref": "8c7dd824fcd4e589afe73c72cbc1b2007c6e66d0",
+      "metadata": {
+        "project": "verisec/self-history",
+        "language": "python",
+        "commit_subject": "Exempt clean reviews from the average-confidence floor",
+        "vulnerability_class": "none-benign-change"
+      },
+      "expected_findings": [],
+      "tags": [
+        "fp-corpus",
+        "self-history",
+        "python"
+      ]
+    }
+  ]
+}

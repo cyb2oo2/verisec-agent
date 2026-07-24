@@ -24,6 +24,9 @@ class GateThresholds:
     max_policy_blocked: int = 0
     max_critical: int | None = None
     max_high: int | None = None
+    # Total findings across the suite. Ratchets a noise measurement where every
+    # finding is unexpected, so rate-based thresholds collapse to all-or-nothing.
+    max_findings: int | None = None
 
 
 class GateError(RuntimeError):
@@ -285,6 +288,8 @@ def _evaluate_thresholds(metrics: dict[str, Any], thresholds: GateThresholds) ->
         )
     if thresholds.max_high is not None:
         _check_max(failures, "high findings", metrics["high_count"], thresholds.max_high)
+    if thresholds.max_findings is not None:
+        _check_max(failures, "findings", metrics["finding_count"], thresholds.max_findings)
     return failures
 
 

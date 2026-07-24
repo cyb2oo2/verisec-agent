@@ -64,102 +64,19 @@ RULES: tuple[Rule, ...] = (
         rule_id="py-sql-string-format",
         title="SQL query string formatting introduced",
         severity="high",
-        pattern=re.compile(r"(SELECT|INSERT|UPDATE|DELETE).*(f\"|%|\.format\()", re.IGNORECASE),
+        # `["']\s*%` matches string-then-% formatting ("..." % v) but not a `%s`
+        # placeholder inside a parameterized query ("...%s", params), which is safe.
+        # Real %-formatting SQLi is caught precisely (taint-gated) by python_semantics.
+        pattern=re.compile(
+            r"(SELECT|INSERT|UPDATE|DELETE).*(f[\"']|\.format\(|[\"']\s*%\s*[\w(])",
+            re.IGNORECASE,
+        ),
         risk="Formatted SQL strings can allow injection when variables include attacker input.",
         fix_guidance="Use parameterized queries from the database driver.",
         recommended_validation=("SQL injection regression test", "static query construction scan"),
         confidence=0.64,
         false_positive_notes=(
-            "May be safe for compile-time constants, but needs dataflow confirmation."
-        ),
-        scan_mode="python-text",
-    ),
-    Rule(
-        rule_id="py-sql-lookup-injection",
-        title="SQL lookup or truncation identifier hardening changed",
-        severity="high",
-        pattern=re.compile(
-            r"extract_trunc_lookup_pattern\.fullmatch\(self\.(lookup_name|kind)\)"
-        ),
-        risk=(
-            "Unvalidated lookup names or truncation kinds can become SQL fragments "
-            "inside generated database expressions."
-        ),
-        fix_guidance=(
-            "Constrain database expression identifiers to a strict allowlist or "
-            "safe identifier pattern before SQL generation."
-        ),
-        recommended_validation=("SQL injection regression test",),
-        confidence=0.66,
-        false_positive_notes=(
-            "This is usually a hardening signal; verify the checked value reaches "
-            "database SQL generation."
-        ),
-        scan_mode="python-text",
-    ),
-    Rule(
-        rule_id="py-sql-identifier-injection",
-        title="SQL identifier alias validation changed",
-        severity="high",
-        pattern=re.compile(r"\bFORBIDDEN_ALIAS_PATTERN\s*="),
-        risk=(
-            "Unvalidated query aliases can become SQL identifiers and allow "
-            "injection through annotation, aggregation, or extra-select APIs."
-        ),
-        fix_guidance=(
-            "Reject aliases containing quotes, whitespace, semicolons, bracket "
-            "characters, or SQL comment markers before SQL compilation."
-        ),
-        recommended_validation=("SQL injection regression test",),
-        confidence=0.66,
-        false_positive_notes=(
-            "Alias validation is a hardening signal; verify the validator is used "
-            "on annotation, aggregation, values, and extra-select alias paths."
-        ),
-        scan_mode="python-text",
-    ),
-    Rule(
-        rule_id="py-sql-explain-option-injection",
-        title="SQL EXPLAIN option validation changed",
-        severity="high",
-        pattern=re.compile(r"\bEXPLAIN_OPTIONS_PATTERN\.fullmatch\(option_name\)"),
-        risk=(
-            "Unvalidated EXPLAIN option names can be assembled into SQL fragments "
-            "on database backends that accept option dictionaries."
-        ),
-        fix_guidance=(
-            "Validate option names with a strict identifier pattern and reject SQL "
-            "comment or statement-separator fragments before SQL generation."
-        ),
-        recommended_validation=("SQL injection regression test",),
-        confidence=0.66,
-        false_positive_notes=(
-            "EXPLAIN option validation is backend-sensitive; verify the checked "
-            "name reaches the backend SQL prefix builder."
-        ),
-        scan_mode="python-text",
-    ),
-    Rule(
-        rule_id="py-sql-delimiter-injection",
-        title="SQL aggregate delimiter parameterization changed",
-        severity="high",
-        pattern=re.compile(
-            r"\bdelimiter_expr\s*=\s*Value\(str\(delimiter\)\)"
-            r"|def\s+test_string_agg_delimiter_escaping\s*\("
-        ),
-        risk=(
-            "Interpolating an attacker-controlled aggregate delimiter into a SQL "
-            "template can allow SQL injection."
-        ),
-        fix_guidance=(
-            "Represent the delimiter as a database expression or query parameter "
-            "instead of interpolating it into the SQL template."
-        ),
-        recommended_validation=("SQL injection regression test",),
-        confidence=0.68,
-        false_positive_notes=(
-            "Delimiter parameterization is a hardening signal; verify the expression "
-            "is compiled through the database backend parameter path."
+            "Parameterized %s/%(name)s placeholders are safe; the semantic layer confirms taint."
         ),
         scan_mode="python-text",
     ),
@@ -217,32 +134,6 @@ RULES: tuple[Rule, ...] = (
         false_positive_notes="May be acceptable for non-security checksums with clear labeling.",
     ),
     Rule(
-        rule_id="py-dos-algorithmic-complexity",
-        title="Algorithmic complexity DoS hardening changed",
-        severity="medium",
-        pattern=re.compile(
-            r"exceeds_maximum_length_ratio\s*\("
-            r"\s*password\s*,\s*self\.max_similarity\s*,\s*value_part\s*\)"
-        ),
-        risk=(
-            "Unbounded expensive comparisons on attacker-controlled strings can "
-            "cause CPU denial of service."
-        ),
-        fix_guidance=(
-            "Short-circuit obviously unsafe length ratios before invoking expensive "
-            "similarity, normalization, or parsing routines."
-        ),
-        recommended_validation=("algorithmic complexity regression test",),
-        confidence=0.64,
-        false_positive_notes=(
-            "Complexity hardening is workload-sensitive; verify the skipped path "
-            "guards an attacker-controlled expensive operation."
-        ),
-        scan_mode="python-text",
-        family="complexity-dos",
-        mode="adds-hardening",
-    ),
-    Rule(
         rule_id="py-unicode-normalization-dos",
         title="Unicode normalization complexity DoS path changed",
         severity="medium",
@@ -275,8 +166,6 @@ RULES: tuple[Rule, ...] = (
         pattern=re.compile(
             r"re\.(search|match|compile|fullmatch|findall|sub)\s*\([^,\n]*"
             r"(\(\s*[^)]*\|[^)]*\)\s*\+|\(\?:?\.\*,\)\*|\*\s*\$)"
-            r"|PROCESS_AS_KEYWORD\s*=\s*object\(\)"
-            r"|action\s+is\s+keywords\.PROCESS_AS_KEYWORD"
         ),
         risk="Ambiguous repetition or alternation in regular expressions can cause ReDoS.",
         fix_guidance=(

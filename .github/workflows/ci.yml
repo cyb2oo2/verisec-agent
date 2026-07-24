@@ -37,6 +37,12 @@ jobs:
           --out verisec-runs/release-portfolio
           --policy-profile trusted-ci
           --github-step-summary
+      - name: Check the committed benchmark snapshot is current
+        if: github.event_name != 'pull_request'
+        run: >
+          python scripts/check_benchmark_freshness.py
+          --generated verisec-runs/release-portfolio/benchmark-matrix
+
       - name: Attest release portfolio artifacts
         if: github.event_name != 'pull_request'
         run: >

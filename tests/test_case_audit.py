@@ -78,7 +78,7 @@ def test_run_case_audit_handles_negative_controls_without_verification() -> None
     )
 
     summary = result["summary"]
-    assert summary["case_count"] == 11
+    assert summary["case_count"] == 15
     assert summary["blocked_count"] == 0
-    assert summary["negative_control_case_count"] == 11
+    assert summary["negative_control_case_count"] == 15
     assert summary["verification_ready_count"] == 0

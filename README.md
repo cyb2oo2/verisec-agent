@@ -66,13 +66,19 @@ repositories. Snapshot from
 
 | System | Positive Cases | Negative Controls | Primary Recall | Primary Precision | Findings | Raw Tool Findings | Out Scope | Validation | Tool Evidence | Neg Ctrl Violations |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
-| VeriSec Agent | 3 OSS CVE/PR cases | 11 adversarial controls | 1.00 | 0.50 | 8 | 8 | 0 | 1.00 | 1.00 | 0 |
-| VeriSec Agent promoted CVEs | 6 promoted CVE cases | 11 adversarial controls | 1.00 | 0.64 | 11 | 11 | 0 | 1.00 | 1.00 | 0 |
+| VeriSec Agent | 3 OSS CVE/PR cases | 15 adversarial controls | 1.00 | 0.50 | 8 | 8 | 0 | 1.00 | 1.00 | 0 |
+| VeriSec Agent promoted CVEs | 6 promoted CVE cases | 15 adversarial controls | n/a | 0.00 | 0 | 0 | 0 | 1.00 | 0.00 | 0 |
 | Semgrep baseline | 3 OSS CVE/PR cases | 10 isolated scanner controls | 0.00 | 0.00 | 0 | 2 | 2 | 1.00 | 0.00 | 0 |
 | CodeQL baseline | 3 OSS CVE/PR cases | 10 isolated scanner controls | 0.00 | 0.00 | 0 | 10 | 10 | 1.00 | 0.00 | 0 |
 
 Scanner rows use patch-overlap scoring for the recorded configurations; zero
-recall means those configs did not match labeled changed lines in this set.
+recall means those configs did not match labeled changed lines in this set. The
+promoted-CVE row is verification-only: the patch-literal signatures that once
+scored it were retired, so VeriSec reports no generalizable detection on these
+cases (recall `n/a`, 0 findings). They are retained because each fix is
+independently confirmed present by a property-check (validation `1.00`); the row
+makes no detection claim and is not comparable to the scanner rows (see
+[DEVELOPMENT_LOG.md](DEVELOPMENT_LOG.md) D-022).
 
 **Holdout protocol** (blind pilot vs later post-fix remeasure):
 
@@ -386,6 +392,18 @@ strong hashes, bounded regexes, and dangerous patterns that appear only in
 comments or string literals. It is intended to keep false positives visible as a
 first-class CI signal.
 
+[examples/self_history_cases.json](examples/self_history_cases.json) measures the
+same concern from the opposite direction. Where a negative control is a crafted
+near miss, this suite replays every parented commit on this repository's own
+`origin/main` as a real benign change with no expected findings, so any finding
+counts as reviewer noise. It runs offline against the local checkout.
+
+The current measurement is 22 findings across 18 commits, 14 of them clean, and
+the gate holds that level rather than demanding zero. Read it as an upper bound
+rather than an estimate for ordinary repositories: 21 of the 22 land in `tests/`,
+`examples/`, or `scripts/`, because a security tool's own repository is full of
+deliberately vulnerable fixtures that normal projects do not contain.
+
 See [examples/real_repo_cases.example.json](examples/real_repo_cases.example.json)
 for a template to turn accepted OSS PRs or CVE patches into evaluation cases.
 The first real seed case is tracked in
@@ -427,6 +445,16 @@ python -m verisec_agent gate `
   --max-negative-control-violations 0
 ```
 
+A noise corpus has no expected findings, so every rate threshold saturates the
+moment anything fires. Gate its total instead, ratcheting the measured level:
+
+```powershell
+python -m verisec_agent gate `
+  --evaluation verisec-runs/self-history/evaluation.json `
+  --max-total-findings 22 `
+  --max-errors 0
+```
+
 `verisec dashboard` rolls multiple evaluations into one release matrix. It can
 also compare the current matrix against a previous `dashboard.json`.
 
@@ -449,7 +477,8 @@ also run audit-only candidate queues through `case_audit_suites` so future CVE/P
 cases are visible without being counted as measured benchmark performance. The
 included [verisec_portfolio.json](verisec_portfolio.json) covers the demo smoke
 test, the real OSS seed portfolio, the promoted CVE suite, the adversarial
-negative-control suite, an audit-only candidate CVE queue, and a benchmark
+negative-control suite, the self-history noise corpus, an audit-only candidate
+CVE queue, and a benchmark
 matrix with a measured Semgrep artifact baseline and a live CodeQL security
 SARIF baseline backed by frozen scanner artifacts. CodeQL can still rerun live
 when the frozen artifact is removed or `reuse_results` is disabled. It is
@@ -467,6 +496,9 @@ cases so scanner drift can be measured without destabilizing the release gate.
 After a passed nightly run and passed attestation, `scripts/promote_nightly_artifacts.py`
 freezes the live scanner outputs back into portable release baselines and can
 copy a passed release benchmark snapshot into `docs/`.
+`scripts/check_benchmark_freshness.py` then guards that snapshot in CI, failing
+when the published figures no longer match a live run. See
+[docs/PORTFOLIO_PROFILES.md](docs/PORTFOLIO_PROFILES.md).
 
 Scanner baseline entries can either point at captured artifacts:
 

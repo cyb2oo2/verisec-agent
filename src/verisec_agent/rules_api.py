@@ -5,7 +5,7 @@ packs can be enabled from config or discovered via setuptools entry points:
 
 ```toml
 [rules]
-packs = ["builtin", "django"]
+packs = ["builtin", "my-pack"]
 ```
 
 Third-party packages register packs in ``pyproject.toml``:
@@ -147,11 +147,9 @@ def _builtin_pack_factories() -> dict[str, Callable[[], RuleProvider]]:
     """Always-available in-tree packs (works without reinstalling entry points)."""
     # Lazy imports avoid import cycles with hypotheses / providers.
     from verisec_agent.rules_builtin import BuiltinRuleProvider
-    from verisec_agent.rules_django import DjangoRuleProvider
 
     return {
         "builtin": BuiltinRuleProvider,
-        "django": DjangoRuleProvider,
     }
 
 

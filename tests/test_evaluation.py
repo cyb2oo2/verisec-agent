@@ -6,7 +6,12 @@ from pathlib import Path
 import pytest
 
 import verisec_agent.evaluation as evaluation_module
-from verisec_agent.evaluation import EvaluationError, load_evaluation_cases, run_evaluation
+from verisec_agent.evaluation import (
+    EvaluationCase,
+    EvaluationError,
+    load_evaluation_cases,
+    run_evaluation,
+)
 
 
 def test_load_evaluation_cases_resolves_paths(tmp_path: Path) -> None:
@@ -377,6 +382,59 @@ def run_command(user_input: str):
     assert result["summary"]["primary_finding_recall"] == 1.0
     assert result["summary"]["security_advisory_case_count"] == 1
     assert result["summary"]["tag_counts"]["oss"] == 1
+
+
+@pytest.mark.skipif(shutil.which("git") is None, reason="git is required")
+def test_materialize_case_checks_out_head_ref_not_working_tree(tmp_path: Path) -> None:
+    # The repo source (no repo_url) must materialize a checkout at head_ref, even when the
+    # working tree is parked at a different revision. Regression for T-009: the old code
+    # returned the source tree at whatever HEAD was, so a multi-line string masked by
+    # patched-file line number consulted the wrong revision.
+    source_repo = tmp_path / "source-repo"
+    source_repo.mkdir()
+    _git(source_repo, "init")
+    _git(source_repo, "config", "user.name", "VeriSec Test")
+    _git(source_repo, "config", "user.email", "verisec@example.test")
+    (source_repo / "app.py").write_text(
+        'PATTERN = """\nbase-line-one\nbase-line-two\n"""\n',
+        encoding="utf-8",
+    )
+    _git(source_repo, "add", "app.py")
+    _git(source_repo, "commit", "-m", "base")
+    base_ref = _git(source_repo, "rev-parse", "HEAD").stdout.strip()
+    (source_repo / "app.py").write_text(
+        'PATTERN = """\nhead-line-one\nhead-line-two\nhead-line-three\n"""\n',
+        encoding="utf-8",
+    )
+    _git(source_repo, "add", "app.py")
+    _git(source_repo, "commit", "-m", "head")
+    head_ref = _git(source_repo, "rev-parse", "HEAD").stdout.strip()
+
+    # Park the working tree at base_ref so HEAD != head_ref — the condition that made the
+    # old code return a checkout describing a different revision than the diff.
+    _git(source_repo, "checkout", base_ref)
+    assert "head-line-three" not in (source_repo / "app.py").read_text(encoding="utf-8")
+
+    case = EvaluationCase(
+        case_id="repo-head-ref",
+        diff_path=None,
+        repo_path=source_repo,
+        base_ref=base_ref,
+        head_ref=head_ref,
+    )
+
+    materialized = evaluation_module._materialize_case(
+        case=case,
+        case_output=tmp_path / "case-out",
+    )
+
+    assert materialized["source_kind"] == "git_existing_repo"
+    checkout = Path(materialized["repo_path"]) / "app.py"
+    contents = checkout.read_text(encoding="utf-8")
+    assert "head-line-three" in contents
+    assert "base-line-two" not in contents
+    diff_text = Path(materialized["diff_path"]).read_text(encoding="utf-8")
+    assert "head-line-three" in diff_text
 
 
 @pytest.mark.skipif(shutil.which("git") is None, reason="git is required")

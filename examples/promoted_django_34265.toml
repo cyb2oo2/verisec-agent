@@ -34,7 +34,7 @@ print(
     + json.dumps(
         dict(
             kind="property-check",
-            rule_id="py-sql-lookup-injection",
+            rule_id="",
             file_path="django/db/models/functions/datetime.py",
             check="SQL injection regression test",
             assertion="Trunc(kind) and Extract(lookup_name) reject unsafe SQL identifier fragments.",

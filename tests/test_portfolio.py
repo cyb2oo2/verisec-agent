@@ -19,6 +19,10 @@ def test_run_portfolio_writes_release_gate(
             "claim_boundaries": [
                 "Metrics describe only the curated cases in this manifest.",
                 "Scanner rows are configuration-specific comparisons.",
+                (
+                    "Curated benchmark: {VeriSec Agent:positive_cases} positive cases "
+                    "and {VeriSec Agent:negative_controls} negative controls."
+                ),
             ],
             "systems": [
                 {
@@ -115,6 +119,7 @@ def test_run_portfolio_writes_release_gate(
     assert result["benchmark_matrix"]["claim_boundaries"] == (
         "Metrics describe only the curated cases in this manifest.",
         "Scanner rows are configuration-specific comparisons.",
+        "Curated benchmark: 1 positive cases and 1 negative controls.",
     )
     assert result["suites"][0]["label"] == "demo"
     assert result["suites"][0]["gate_passed"] is True
@@ -147,6 +152,48 @@ def test_run_portfolio_writes_release_gate(
     assert "| demo | passed | 1 | 1 | 1.00 | 1.00 | 0.00 | 0 |" in markdown
 
 
+def test_display_status_demotes_row_but_keeps_metrics() -> None:
+    """A demoted row keeps its computed numbers and drops out of the measured count."""
+    suite = {
+        "label": "promoted-cves",
+        "metrics": {
+            "case_count": 6,
+            "finding_count": 11,
+            "primary_finding_recall": 1.0,
+            "primary_precision": 0.64,
+        },
+    }
+    negative = {"label": "negative-controls", "metrics": {"case_count": 12}}
+
+    demoted = portfolio_module._benchmark_row(
+        {
+            "label": "VeriSec Agent promoted CVEs",
+            "suite": "promoted-cves",
+            "negative_suite": "negative-controls",
+            "display_status": "illustrative",
+        },
+        {"promoted-cves": suite, "negative-controls": negative},
+        {},
+    )
+
+    assert demoted["status"] == "illustrative"
+    # The number is relabeled, not hidden.
+    assert demoted["metrics"]["primary_recall"] == 1.0
+    assert demoted["metrics"]["findings"] == 11
+
+
+def test_display_status_cannot_fake_measured() -> None:
+    """The override may only demote a real measurement, never inflate one."""
+    suite = {"label": "s", "metrics": {"case_count": 1, "finding_count": 0}}
+
+    with pytest.raises(PortfolioError, match="display_status cannot be 'measured'"):
+        portfolio_module._benchmark_row(
+            {"label": "S", "suite": "s", "display_status": "measured"},
+            {"s": suite},
+            {},
+        )
+
+
 def test_run_portfolio_rejects_invalid_claim_boundaries(tmp_path: Path) -> None:
     manifest_path = _write_manifest(
         tmp_path,
@@ -157,6 +204,47 @@ def test_run_portfolio_rejects_invalid_claim_boundaries(tmp_path: Path) -> None:
     )
 
     with pytest.raises(PortfolioError, match="claim_boundaries"):
+        run_portfolio(manifest_path=manifest_path, output_dir=tmp_path / "runs")
+
+
+def test_run_portfolio_rejects_claim_boundary_unknown_system(tmp_path: Path) -> None:
+    """An unresolved reference must fail rather than publish a literal placeholder."""
+    manifest_path = _write_manifest(
+        tmp_path,
+        benchmark={
+            "claim_boundaries": ["Covers {No Such System:positive_cases} cases."],
+            "systems": [],
+        },
+    )
+
+    with pytest.raises(PortfolioError, match="unknown system 'No Such System'"):
+        run_portfolio(manifest_path=manifest_path, output_dir=tmp_path / "runs")
+
+
+def test_run_portfolio_rejects_claim_boundary_unknown_metric(tmp_path: Path) -> None:
+    manifest_path = _write_manifest(
+        tmp_path,
+        benchmark={
+            "claim_boundaries": ["Covers {Pending Scanner:no_such_metric} cases."],
+            "systems": [{"label": "Pending Scanner", "status": "not-run"}],
+        },
+    )
+
+    with pytest.raises(PortfolioError, match="unknown metric 'no_such_metric'"):
+        run_portfolio(manifest_path=manifest_path, output_dir=tmp_path / "runs")
+
+
+def test_run_portfolio_rejects_claim_boundary_unmeasured_metric(tmp_path: Path) -> None:
+    """A not-run system has the metric key but no value; publishing "n/a" would mislead."""
+    manifest_path = _write_manifest(
+        tmp_path,
+        benchmark={
+            "claim_boundaries": ["Covers {Pending Scanner:positive_cases} cases."],
+            "systems": [{"label": "Pending Scanner", "status": "not-run"}],
+        },
+    )
+
+    with pytest.raises(PortfolioError, match="unmeasured metric 'positive_cases'"):
         run_portfolio(manifest_path=manifest_path, output_dir=tmp_path / "runs")
 
 
