@@ -23,6 +23,24 @@ from the code.
 
 ---
 
+## D-024 — The CI `test` job must check out full git history
+**Date:** 2026-07-25 · **Status:** accepted
+**Context:** The `self-history-noise` portfolio suite (added with the D-022/T-011 work) evaluates
+VeriSec's own commits by fetching historical `base_ref`/`head_ref` SHAs from the checkout itself
+(`repo_url: ".."`). `actions/checkout@v4` defaults to `fetch-depth: 1`, so those historical objects
+are absent and every self-history case errors on fetch (`git upload-pack: not our ref …`), tripping
+the suite gate's `max_errors: 0`. The release portfolio only runs on push to `main`, not on PRs, so
+the break was invisible on the demote-django PR and only surfaced after merge — `main` went red with
+"5 suite(s), 1 failure(s)" while the same commit passed locally (full history present).
+**Decision:** Set `fetch-depth: 0` on the `test` job checkout in `ci.yml`. The nightly workflow,
+which runs the same suite, already did this; the main CI job simply missed it when the suite landed.
+**Alternatives:** Fetching individual historical SHAs on demand (fragile, needs per-case fetch
+plumbing and `allowAnySHA1InWant` on the remote); dropping the suite from the release portfolio
+(loses the self-history FP corpus signal on every push).
+**Consequences:** The `test` job now pays a full-history clone. Do not reintroduce a shallow
+checkout there while any suite resolves refs against the local repo. The deeper gap — the portfolio
+step being push-only, so PRs cannot catch portfolio regressions — remains open.
+
 ## D-023 — Clear the inert retired-rule references left by D-022
 **Date:** 2026-07-24 · **Status:** accepted
 **Context:** D-022 retired five patch-literal rules but deliberately left three fixture references
