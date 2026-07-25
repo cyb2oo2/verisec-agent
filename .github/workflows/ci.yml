@@ -22,6 +22,10 @@ jobs:
       verisec-comment-ready: ${{ steps.verisec_comment.outputs.ready }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          # The self-history-noise portfolio suite fetches historical commit SHAs
+          # from this checkout (repo_url: ".."); a shallow clone lacks those objects.
+          fetch-depth: 0
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
