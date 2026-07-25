@@ -23,6 +23,31 @@ from the code.
 
 ---
 
+## D-025 — Nightly promoted-cves gate must match the fast profile's verification-only gate
+**Date:** 2026-07-25 · **Status:** accepted
+**Context:** D-022 retired the patch-literal detection rules and reframed `promoted-cves` to
+verification-only, updating that suite's gate in `verisec_portfolio.json` to drop every detection
+metric. It missed the same suite in `verisec_portfolio.nightly.json`, which still required
+`min_tool_evidence_rate: 1.0`, `min_primary_precision: 0.5`, `min_primary_finding_recall: 1.0`,
+`min_supporting_evidence_rate: 0.25`, etc. Post-merge, those cases produce zero findings by design,
+so the live nightly portfolio failed its very first step ("4 suite(s), 4 failure(s)", all four in
+promoted-cves) and never reached the scanner-baseline promotion or the PR-creation step. This is
+what actually broke the nightly since the D-022 merge — separate from the repo-setting issue that
+had blocked `gh pr create` earlier.
+**Decision:** Replace the nightly promoted-cves gate with the identical verification-only gate the
+fast profile already uses (validation-coverage 1.0, unexpected 0, required-failures 0, errors 0,
+negative-control 0, policy-blocked 0, validation-gap 0). Added a guard test
+(`test_promoted_cves_gate_is_verification_only_in_both_profiles`) asserting both manifests keep this
+gate free of detection metrics and identical, so the two profiles cannot drift apart again.
+**Alternatives:** Restoring detection metrics on the nightly (would re-assert the retired
+patch-literal claim D-022 removed — measurement dishonesty); dropping promoted-cves from the nightly
+(loses the verification-coverage signal on the live run).
+**Consequences:** The nightly's promoted-cves suite is now verification-only in both profiles;
+integrity is still enforced by validation coverage 1.0 and the zero-tolerance error/control gates.
+The nightly manifest's `benchmark_matrix` still carries pre-D-022 descriptive text (D-015 regex-
+signature framing) for the promoted-CVE row; that generated matrix is not published, but the text
+should be reconciled with D-022 as a follow-up.
+
 ## D-024 — The CI `test` job must check out full git history
 **Date:** 2026-07-25 · **Status:** accepted
 **Context:** The `self-history-noise` portfolio suite (added with the D-022/T-011 work) evaluates

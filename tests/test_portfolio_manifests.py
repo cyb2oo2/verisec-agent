@@ -51,6 +51,27 @@ def test_nightly_portfolio_runs_live_scanners_on_isolated_controls() -> None:
     )
 
 
+def test_promoted_cves_gate_is_verification_only_in_both_profiles() -> None:
+    # D-022 reframed promoted-cves to verification-only (the patch-literal detection
+    # rules were retired). The gate must not require detection metrics in either the
+    # fast or the live-nightly manifest, or the retired rules would appear "required".
+    fast = _suite_gate(_load_manifest("verisec_portfolio.json"), "promoted-cves")
+    nightly = _suite_gate(_load_manifest("verisec_portfolio.nightly.json"), "promoted-cves")
+
+    detection_keys = {
+        "min_tool_evidence_rate",
+        "min_avg_confidence",
+        "min_accepted_finding_rate",
+        "min_primary_precision",
+        "min_primary_finding_recall",
+        "min_supporting_evidence_rate",
+    }
+    for gate in (fast, nightly):
+        assert detection_keys.isdisjoint(gate)
+        assert gate["min_validation_coverage"] == 1.0
+    assert fast == nightly
+
+
 def test_release_semgrep_negative_baseline_matches_scanner_controls() -> None:
     scanner_cases = _case_ids(_load_manifest("examples/scanner_negative_control_cases.json"))
     baseline = _load_manifest("examples/baselines/semgrep_negative_controls.json")
@@ -91,6 +112,17 @@ def test_holdout_portfolio_is_frozen_and_disjoint() -> None:
 
 def _load_manifest(name: str) -> dict[str, object]:
     return json.loads((ROOT / name).read_text(encoding="utf-8"))
+
+
+def _suite_gate(manifest: dict[str, object], label: str) -> dict[str, object]:
+    suites = manifest["suites"]
+    assert isinstance(suites, list)
+    for suite in suites:
+        if suite["label"] == label:
+            gate = suite["gate"]
+            assert isinstance(gate, dict)
+            return gate
+    raise AssertionError(f"suite {label!r} not found")
 
 
 def _baselines_by_label(manifest: dict[str, object]) -> dict[str, dict[str, object]]:
