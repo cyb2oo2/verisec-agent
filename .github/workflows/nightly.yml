@@ -78,8 +78,12 @@ jobs:
 
       - name: Verify promotion invariants
         run: |
-          python -m pytest tests/test_promote_nightly_artifacts.py tests/test_portfolio_manifests.py
-          python -m ruff check --no-cache scripts tests/test_promote_nightly_artifacts.py tests/test_portfolio_manifests.py
+          python -m pytest tests/test_promote_nightly_artifacts.py tests/test_portfolio_manifests.py \
+            tests/test_published_benchmark.py
+          python -m ruff check --no-cache scripts tests/test_promote_nightly_artifacts.py \
+            tests/test_portfolio_manifests.py tests/test_published_benchmark.py
+          python scripts/check_benchmark_freshness.py \
+            --generated verisec-runs/release-portfolio-after-promotion/benchmark-matrix
           git diff --check
       - uses: actions/upload-artifact@v4
         if: always()
@@ -103,6 +107,7 @@ jobs:
             examples/baselines
             docs/release_benchmark_matrix.json
             docs/RELEASE_BENCHMARK.md
+            README.md
           )
           changes="$(git status --porcelain -- "${promotion_paths[@]}")"
           if [ -z "$changes" ]; then

@@ -3,6 +3,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import re
 import shutil
 from pathlib import Path, PurePosixPath
 from typing import Any
@@ -15,6 +16,27 @@ DEFAULT_PROMOTIONS = {
     "codeql-oss-seed-live": "codeql_oss_seed_frozen.json",
     "codeql-negative-controls-live": "codeql_negative_controls_frozen.json",
 }
+
+# README benchmark-table column order mapped to matrix metric keys. The row label
+# and per-row prose (e.g. "adversarial controls") are editorial and are preserved;
+# only the leading figure of each cell is rewritten. Kept in lockstep with
+# README_COLUMNS in tests/test_published_benchmark.py, which pins the same contract.
+README_BENCHMARK_COLUMNS = (
+    "positive_cases",
+    "negative_controls",
+    "primary_recall",
+    "primary_precision",
+    "findings",
+    "raw_tool_findings",
+    "out_of_scope_findings",
+    "validation_coverage",
+    "tool_evidence_rate",
+    "negative_control_violations",
+)
+README_BENCHMARK_RATE_METRICS = frozenset(
+    {"primary_recall", "primary_precision", "validation_coverage", "tool_evidence_rate"}
+)
+_NUMBER_RE = re.compile(r"-?\d+(?:\.\d+)?")
 
 
 class PromotionError(RuntimeError):
@@ -44,6 +66,7 @@ def main() -> None:
         default=Path("docs/RELEASE_BENCHMARK.md"),
         type=Path,
     )
+    parser.add_argument("--readme", default=Path("README.md"), type=Path)
     parser.add_argument("--out", default=Path("verisec-runs/nightly-promotion"), type=Path)
     args = parser.parse_args()
 
@@ -55,6 +78,7 @@ def main() -> None:
             release_dir=args.release_dir,
             benchmark_json_path=args.benchmark_json,
             benchmark_md_path=args.benchmark_md,
+            readme_path=args.readme,
             output_dir=args.out,
         )
     except PromotionError as exc:
@@ -62,7 +86,8 @@ def main() -> None:
     print(
         "Nightly promotion complete: "
         f"{len(result['promotions'])} scanner artifact(s), "
-        f"benchmark updated: {bool(result.get('benchmark'))}."
+        f"benchmark updated: {bool(result.get('benchmark'))}, "
+        f"README updated: {bool(result.get('readme'))}."
     )
     print(f"Promotion: {args.out.resolve()}")
 
@@ -75,6 +100,7 @@ def promote_nightly_artifacts(
     release_dir: Path | None = None,
     benchmark_json_path: Path | None = None,
     benchmark_md_path: Path | None = None,
+    readme_path: Path | None = None,
     output_dir: Path | None = None,
 ) -> dict[str, Any]:
     nightly_dir = nightly_dir.resolve()
@@ -95,14 +121,21 @@ def promote_nightly_artifacts(
     ]
 
     benchmark = None
+    readme = None
     if release_dir is not None:
         if benchmark_json_path is None or benchmark_md_path is None:
             raise PromotionError("benchmark_json_path and benchmark_md_path are required.")
+        resolved_benchmark_json = benchmark_json_path.resolve()
         benchmark = _promote_benchmark_snapshot(
             release_dir=release_dir.resolve(),
-            benchmark_json_path=benchmark_json_path.resolve(),
+            benchmark_json_path=resolved_benchmark_json,
             benchmark_md_path=benchmark_md_path.resolve(),
         )
+        if readme_path is not None:
+            readme = _promote_readme_table(
+                readme_path=readme_path.resolve(),
+                benchmark_json_path=resolved_benchmark_json,
+            )
 
     result = {
         "passed": True,
@@ -114,6 +147,7 @@ def promote_nightly_artifacts(
         "baselines_portable_path": _portable_workspace_path(baselines_dir),
         "promotions": promotions,
         "benchmark": benchmark,
+        "readme": readme,
     }
     if output_dir is not None:
         output_dir.mkdir(parents=True, exist_ok=True)
@@ -162,6 +196,11 @@ def render_promotion_markdown(result: dict[str, Any]) -> str:
                 f"- Markdown: `{markdown_path}`",
             ]
         )
+        if result.get("readme"):
+            readme = result["readme"]
+            readme_path = readme.get("readme_portable_path", readme["readme_path"])
+            changed = "changed" if readme.get("changed") else "unchanged"
+            lines.append(f"- README table: `{readme_path}` ({changed})")
     return "\n".join(lines).rstrip() + "\n"
 
 
@@ -225,6 +264,87 @@ def _promote_benchmark_snapshot(
         "markdown_bytes": md_entry["bytes"],
         "markdown_sha256": md_entry["sha256"],
     }
+
+
+def _promote_readme_table(
+    *,
+    readme_path: Path,
+    benchmark_json_path: Path,
+) -> dict[str, Any]:
+    if not readme_path.exists():
+        raise PromotionError(f"README does not exist: {readme_path}")
+    matrix = json.loads(benchmark_json_path.read_text(encoding="utf-8"))
+    original = readme_path.read_text(encoding="utf-8")
+    updated = update_readme_benchmark_table(original, matrix)
+    readme_path.write_text(updated, encoding="utf-8")
+    entry = _artifact_entry(readme_path)
+    return {
+        "readme_path": str(readme_path),
+        "readme_portable_path": _portable_workspace_path(readme_path),
+        "changed": updated != original,
+        **entry,
+    }
+
+
+def update_readme_benchmark_table(readme_text: str, matrix: dict[str, Any]) -> str:
+    """Rewrite the leading figure of each benchmark-table cell from the matrix JSON.
+
+    Preserves row labels, per-cell prose, column layout, and line endings; only the
+    numeric portion of a cell changes. The published README table is hand-annotated,
+    so it is edited in place rather than re-rendered from scratch.
+    """
+    systems = {system["label"]: system["metrics"] for system in matrix.get("systems", ())}
+    if not systems:
+        return readme_text
+
+    updated_labels: set[str] = set()
+    lines = readme_text.split("\n")
+    for index, line in enumerate(lines):
+        carriage = line.endswith("\r")
+        body = line[:-1] if carriage else line
+        stripped = body.strip()
+        if not stripped.startswith("|"):
+            continue
+        cells = [cell.strip() for cell in stripped.strip("|").split("|")]
+        label = cells[0] if cells else ""
+        if label not in systems:
+            continue
+        metrics = systems[label]
+        values = cells[1:]
+        if len(values) != len(README_BENCHMARK_COLUMNS):
+            raise PromotionError(
+                f"README benchmark row {label!r} has {len(values)} value column(s), "
+                f"expected {len(README_BENCHMARK_COLUMNS)}."
+            )
+        rewritten = [label]
+        for metric, cell in zip(README_BENCHMARK_COLUMNS, values, strict=True):
+            rewritten.append(
+                _rewrite_readme_cell(
+                    cell,
+                    metrics.get(metric),
+                    rate=metric in README_BENCHMARK_RATE_METRICS,
+                )
+            )
+        rebuilt = "| " + " | ".join(rewritten) + " |"
+        lines[index] = rebuilt + "\r" if carriage else rebuilt
+        updated_labels.add(label)
+
+    missing = set(systems) - updated_labels
+    if missing:
+        raise PromotionError(
+            "README benchmark table is missing published system(s): "
+            + ", ".join(sorted(missing))
+        )
+    return "\n".join(lines)
+
+
+def _rewrite_readme_cell(cell: str, value: Any, *, rate: bool) -> str:
+    if value is None:
+        return cell
+    formatted = f"{float(value):.2f}" if rate else str(int(value))
+    if _NUMBER_RE.search(cell):
+        return _NUMBER_RE.sub(formatted, cell, count=1)
+    return formatted
 
 
 def _require_passed_portfolio(path: Path, *, label: str) -> None:
