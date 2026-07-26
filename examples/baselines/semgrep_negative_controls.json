@@ -1,135 +1,60 @@
 {
   "adapter": "semgrep",
+  "tool_name": "semgrep",
+  "rule_map": {
+    "python.lang.security.audit.subprocess-shell-true": "py-shell-true",
+    "python.lang.security.deserialization.pyyaml-load": "py-unsafe-yaml",
+    "python.requests.security.disabled-cert-validation": "py-tls-verify-disabled",
+    "python.sqlalchemy.security.sql-injection": "py-sql-string-format",
+    "python.lang.security.audit.insecure-hash-algorithms": "weak-hash",
+    "python.lang.security.audit.eval-exec": "py-eval-exec",
+    "python.lang.security.audit.redos": "py-regex-redos-hardening"
+  },
+  "severity_map": {
+    "warning": "medium",
+    "error": "high",
+    "info": "low"
+  },
   "cases": [
     {
-      "adapter": "semgrep",
-      "case_id": "scanner-negative-shell-false",
-      "diff": "diff --git a/examples/negative_controls.py b/examples/negative_controls.py\n--- a/examples/negative_controls.py\n+++ b/examples/negative_controls.py\n@@ -1,3 +1,5 @@\n+def run_checked(args: list[str]) -> subprocess.CompletedProcess[str]:\n+    return subprocess.run(args, shell=False, check=True, text=True)\n",
-      "frozen_diff_source": "shell_false.diff",
       "id": "scanner-negative-shell-false",
-      "materialized_from": "local_diff",
-      "results": [],
-      "status": "completed",
-      "tool_name": "semgrep"
+      "results": []
     },
     {
-      "adapter": "semgrep",
-      "case_id": "scanner-negative-shell-docs",
-      "diff": "diff --git a/examples/negative_controls.py b/examples/negative_controls.py\n--- a/examples/negative_controls.py\n+++ b/examples/negative_controls.py\n@@ -1,3 +1,6 @@\n+def document_forbidden_shell_pattern() -> str:\n+    # subprocess.run(user_input, shell=True) must stay forbidden in production.\n+    return \"subprocess.run(user_input, shell=True)\"\n",
-      "frozen_diff_source": "shell_true_docs.diff",
       "id": "scanner-negative-shell-docs",
-      "materialized_from": "local_diff",
-      "results": [],
-      "status": "completed",
-      "tool_name": "semgrep"
+      "results": []
     },
     {
-      "adapter": "semgrep",
-      "case_id": "scanner-negative-tls-verify-true",
-      "diff": "diff --git a/examples/negative_controls.py b/examples/negative_controls.py\n--- a/examples/negative_controls.py\n+++ b/examples/negative_controls.py\n@@ -1,3 +1,5 @@\n+def fetch_with_default_tls(url: str) -> requests.Response:\n+    return requests.get(url, verify=True, timeout=10)\n",
-      "frozen_diff_source": "tls_verify_true.diff",
       "id": "scanner-negative-tls-verify-true",
-      "materialized_from": "local_diff",
-      "results": [],
-      "status": "completed",
-      "tool_name": "semgrep"
+      "results": []
     },
     {
-      "adapter": "semgrep",
-      "case_id": "scanner-negative-tls-docs",
-      "diff": "diff --git a/examples/negative_controls.py b/examples/negative_controls.py\n--- a/examples/negative_controls.py\n+++ b/examples/negative_controls.py\n@@ -1,3 +1,6 @@\n+def document_forbidden_tls_pattern() -> str:\n+    # requests.get(url, verify=False) is an anti-pattern kept in docs only.\n+    return \"requests.get(url, verify=False)\"\n",
-      "frozen_diff_source": "tls_verify_false_docs.diff",
       "id": "scanner-negative-tls-docs",
-      "materialized_from": "local_diff",
-      "results": [],
-      "status": "completed",
-      "tool_name": "semgrep"
+      "results": []
     },
     {
-      "adapter": "semgrep",
-      "case_id": "scanner-negative-yaml-safe-loader",
-      "diff": "diff --git a/examples/negative_controls.py b/examples/negative_controls.py\n--- a/examples/negative_controls.py\n+++ b/examples/negative_controls.py\n@@ -1,3 +1,5 @@\n+def load_yaml_safely(source: str) -> object:\n+    return yaml.load(source, Loader=yaml.SafeLoader)\n",
-      "frozen_diff_source": "yaml_safe_loader.diff",
       "id": "scanner-negative-yaml-safe-loader",
-      "materialized_from": "local_diff",
-      "results": [],
-      "status": "completed",
-      "tool_name": "semgrep"
+      "results": []
     },
     {
-      "adapter": "semgrep",
-      "case_id": "scanner-negative-parameterized-sql",
-      "diff": "diff --git a/examples/negative_controls.py b/examples/negative_controls.py\n--- a/examples/negative_controls.py\n+++ b/examples/negative_controls.py\n@@ -1,3 +1,6 @@\n+def lookup_user(cursor, user_id: int):\n+    query = \"SELECT id, name FROM users WHERE id = ?\"\n+    return cursor.execute(query, (user_id,))\n",
-      "frozen_diff_source": "parameterized_sql.diff",
       "id": "scanner-negative-parameterized-sql",
-      "materialized_from": "local_diff",
-      "results": [],
-      "status": "completed",
-      "tool_name": "semgrep"
+      "results": []
     },
     {
-      "adapter": "semgrep",
-      "case_id": "scanner-negative-strong-hash",
-      "diff": "diff --git a/examples/negative_controls.py b/examples/negative_controls.py\n--- a/examples/negative_controls.py\n+++ b/examples/negative_controls.py\n@@ -1,3 +1,5 @@\n+def digest_cache_key(payload: bytes) -> str:\n+    return hashlib.sha256(payload).hexdigest()\n",
-      "frozen_diff_source": "strong_hash.diff",
       "id": "scanner-negative-strong-hash",
-      "materialized_from": "local_diff",
-      "results": [],
-      "status": "completed",
-      "tool_name": "semgrep"
+      "results": []
     },
     {
-      "adapter": "semgrep",
-      "case_id": "scanner-negative-weak-hash-docs",
-      "diff": "diff --git a/examples/negative_controls.py b/examples/negative_controls.py\n--- a/examples/negative_controls.py\n+++ b/examples/negative_controls.py\n@@ -1,3 +1,5 @@\n+def document_legacy_hash() -> str:\n+    return \"legacy code once used hashlib.md5(payload)\"\n",
-      "frozen_diff_source": "weak_hash_docs.diff",
       "id": "scanner-negative-weak-hash-docs",
-      "materialized_from": "local_diff",
-      "results": [],
-      "status": "completed",
-      "tool_name": "semgrep"
+      "results": []
     },
     {
-      "adapter": "semgrep",
-      "case_id": "scanner-negative-literal-eval",
-      "diff": "diff --git a/examples/negative_controls.py b/examples/negative_controls.py\n--- a/examples/negative_controls.py\n+++ b/examples/negative_controls.py\n@@ -1,3 +1,5 @@\n+def parse_literal(value: str):\n+    return ast.literal_eval(value)\n",
-      "frozen_diff_source": "literal_eval.diff",
       "id": "scanner-negative-literal-eval",
-      "materialized_from": "local_diff",
-      "results": [],
-      "status": "completed",
-      "tool_name": "semgrep"
+      "results": []
     },
     {
-      "adapter": "semgrep",
-      "case_id": "scanner-negative-bounded-regex",
-      "diff": "diff --git a/examples/negative_controls.py b/examples/negative_controls.py\n--- a/examples/negative_controls.py\n+++ b/examples/negative_controls.py\n@@ -1,3 +1,5 @@\n+def compile_bounded_slug() -> re.Pattern[str]:\n+    return re.compile(r\"^[a-z0-9_-]{1,64}$\")\n",
-      "frozen_diff_source": "bounded_regex.diff",
       "id": "scanner-negative-bounded-regex",
-      "materialized_from": "local_diff",
-      "results": [],
-      "status": "completed",
-      "tool_name": "semgrep"
+      "results": []
     }
-  ],
-  "command_source_sequence_template": [
-    [
-      "{semgrep}",
-      "scan",
-      "--json",
-      "--config",
-      "p/security-audit",
-      "."
-    ]
-  ],
-  "executable": "semgrep",
-  "frozen_from": "scanner-runs/semgrep-negative-controls-live/scanner_results.json",
-  "label": "semgrep-negative-controls-live",
-  "summary": {
-    "case_count": 10,
-    "completed_count": 10,
-    "error_count": 0,
-    "skipped_count": 0
-  },
-  "tool_name": "semgrep"
+  ]
 }
