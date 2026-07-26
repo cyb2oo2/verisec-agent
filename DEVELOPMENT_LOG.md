@@ -23,6 +23,36 @@ from the code.
 
 ---
 
+## D-026 — Nightly promotion regenerates the README benchmark table and self-validates
+**Date:** 2026-07-26 · **Status:** accepted
+**Context:** The nightly promotion opened a PR (#6) that refreshed
+`docs/release_benchmark_matrix.json` and `docs/RELEASE_BENCHMARK.md` but not the `README.md`
+benchmark table, which `test_published_benchmark.py` requires to match the published JSON
+field-by-field. The merge turned `main` red ("README 'Semgrep baseline' column 'raw_tool_findings'
+is '2', but the published snapshot says 44"). The break was invisible pre-merge because a PR opened
+by the default `GITHUB_TOKEN` does not trigger `pull_request` workflows, so the promotion PR gets no
+CI of its own. The same run also surfaced a live-Semgrep drift (raw findings 2 → 44) — reverted in
+PR #8 as unreviewed. `README.md` is deliberately hand-annotated (prose like "adversarial controls"
+that is not in the JSON), so it cannot be re-rendered verbatim the way `docs/RELEASE_BENCHMARK.md`
+is.
+**Decision:** `promote_nightly_artifacts.py` now rewrites the README table in place from the promoted
+matrix JSON: only the leading figure of each cell changes; row labels, per-cell prose, column
+layout, and line endings are preserved (`update_readme_benchmark_table`). A missing published system
+or a wrong column count raises `PromotionError` rather than silently producing an inconsistent table.
+`README.md` was added to the workflow's promotion paths, and the "Verify promotion invariants" step
+now also runs `test_published_benchmark.py` and `check_benchmark_freshness.py` so the nightly fails
+loudly *before* opening a PR whenever the promoted surfaces disagree. Idempotency on the committed
+README+JSON is pinned by a test, guaranteeing the in-place mapping matches the hand-maintained table.
+**Alternatives:** Fully re-rendering the README table (loses the editorial prose the JSON does not
+carry); adding CI to the promotion PR (impossible for a `GITHUB_TOKEN`-authored PR without a PAT,
+which widens trust); leaving README out of promotion (every real promotion red-mains on merge).
+**Consequences:** Promotions keep all four benchmark surfaces (JSON, `RELEASE_BENCHMARK.md`, README,
+claim boundaries) mutually consistent, and the nightly self-gates on that consistency. The in-place
+rewriter assumes the README table keeps one row per published system with the `README_BENCHMARK_COLUMNS`
+column order; a structural redesign of that table must update the mapping. This does not change the
+review of *scanner drift* — a 2→44 swing is still a human decision (D-025 follow-up), now separable
+from the mechanical surface-sync.
+
 ## D-025 — Nightly promoted-cves gate must match the fast profile's verification-only gate
 **Date:** 2026-07-25 · **Status:** accepted
 **Context:** D-022 retired the patch-literal detection rules and reframed `promoted-cves` to
