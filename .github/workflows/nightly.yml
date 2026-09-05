@@ -87,6 +87,7 @@ jobs:
           git diff --check
       - uses: actions/upload-artifact@v4
         if: always()
+        continue-on-error: true
         with:
           name: verisec-nightly-promotion
           path: |
@@ -97,6 +98,7 @@ jobs:
             verisec-runs/release-portfolio-after-promotion-attestation
             verisec-runs/nightly-promotion
           if-no-files-found: warn
+          retention-days: 3
 
       - name: Create promotion pull request
         env:

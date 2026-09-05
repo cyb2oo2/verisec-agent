@@ -111,16 +111,19 @@ def test_update_readme_benchmark_table_rewrites_figures_and_keeps_prose() -> Non
     matrix = json.loads(
         (ROOT / "docs" / "release_benchmark_matrix.json").read_text(encoding="utf-8")
     )
-    for system in matrix["systems"]:
-        if system["label"] == "Semgrep baseline":
-            system["metrics"]["raw_tool_findings"] = 44
+    semgrep = next(
+        system for system in matrix["systems"] if system["label"] == "Semgrep baseline"
+    )
+    original_out_of_scope = semgrep["metrics"]["out_of_scope_findings"]
+    rewritten_raw_findings = semgrep["metrics"]["raw_tool_findings"] + 42
+    semgrep["metrics"]["raw_tool_findings"] = rewritten_raw_findings
 
     updated = module.update_readme_benchmark_table(readme, matrix)
     row = next(line for line in updated.splitlines() if line.startswith("| Semgrep baseline "))
     cells = [cell.strip() for cell in row.strip("|").split("|")]
 
-    assert cells[6] == "44"  # Raw Tool Findings rewritten from the drifted metric
-    assert cells[7] == "2"  # Out Scope (out_of_scope_findings) left untouched
+    assert cells[6] == str(rewritten_raw_findings)
+    assert cells[7] == str(original_out_of_scope)  # Adjacent metric stays untouched.
     assert cells[1] == "3 OSS CVE/PR cases"  # per-cell prose preserved
     promoted_row = next(
         line for line in updated.splitlines() if line.startswith("| VeriSec Agent promoted CVEs ")
