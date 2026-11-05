@@ -4,7 +4,7 @@
 | --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | --- |
 | VeriSec Agent | measured | 3 | 15 | 1.00 | 0.50 | 8 | 8 | 0 | 1.00 | 1.00 | 0 | AST/dataflow hypotheses with evidence-backed validation bundles. |
 | VeriSec Agent promoted CVEs | verification-only | 6 | 15 | n/a | 0.00 | 0 | 0 | 0 | 1.00 | 0.00 | 0 | Verification-only: the patch-literal signatures were retired (DEVELOPMENT_LOG.md D-022); VeriSec reports no generalizable detection here. Each fix is confirmed present by a property-check. Not a detection measurement. |
-| Semgrep baseline | measured | 3 | 10 | 0.00 | 0.00 | 0 | 2 | 2 | 1.00 | 0.00 | 0 | Semgrep-compatible captured JSON artifacts scored with the same expected-finding labels. |
+| Semgrep baseline | measured | 3 | 10 | 0.00 | 0.00 | 0 | 44 | 44 | 1.00 | 0.00 | 0 | Semgrep-compatible captured JSON artifacts scored with the same expected-finding labels. |
 | CodeQL baseline | measured | 3 | 10 | 0.00 | 0.00 | 0 | 10 | 10 | 1.00 | 0.00 | 0 | CodeQL Python security SARIF profile scored from frozen reusable scanner artifacts; live CodeQL reruns on cache miss. |
 
 ## Claim Boundaries
