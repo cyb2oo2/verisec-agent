@@ -68,7 +68,7 @@ repositories. Snapshot from
 | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
 | VeriSec Agent | 3 OSS CVE/PR cases | 15 adversarial controls | 1.00 | 0.50 | 8 | 8 | 0 | 1.00 | 1.00 | 0 |
 | VeriSec Agent promoted CVEs | 6 promoted CVE cases | 15 adversarial controls | n/a | 0.00 | 0 | 0 | 0 | 1.00 | 0.00 | 0 |
-| Semgrep baseline | 3 OSS CVE/PR cases | 10 isolated scanner controls | 0.00 | 0.00 | 0 | 2 | 2 | 1.00 | 0.00 | 0 |
+| Semgrep baseline | 3 OSS CVE/PR cases | 10 isolated scanner controls | 0.00 | 0.00 | 0 | 44 | 44 | 1.00 | 0.00 | 0 |
 | CodeQL baseline | 3 OSS CVE/PR cases | 10 isolated scanner controls | 0.00 | 0.00 | 0 | 10 | 10 | 1.00 | 0.00 | 0 |
 
 Scanner rows use patch-overlap scoring for the recorded configurations; zero
